@@ -1,16 +1,34 @@
-import type { Enums } from '~/types/database.types'
+import type { Enums, Tables } from '~/types/database.types'
 
 export type ClubRole = Enums<'club_role'>
+
+export interface ClubTeam {
+  league: LeagueShortcut
+  teamId: number
+  name: string
+}
 
 export interface ClubMembership {
   id: string
   name: string
   role: ClubRole
+  team: ClubTeam | null
 }
 
 export const ROLE_LABELS: Record<ClubRole, string> = {
   organizer: 'Organisator',
   member: 'Mitglied'
+}
+
+const CLUB_COLUMNS = 'id, name, league_shortcut, team_id, team_name'
+
+type ClubRow = Pick<Tables<'clubs'>, 'id' | 'name' | 'league_shortcut' | 'team_id' | 'team_name'>
+
+function toMembership(club: ClubRow, role: ClubRole): ClubMembership {
+  const team = isLeagueShortcut(club.league_shortcut) && club.team_id && club.team_name
+    ? { league: club.league_shortcut, teamId: club.team_id, name: club.team_name }
+    : null
+  return { id: club.id, name: club.name, role, team }
 }
 
 /** Alle Fanclubs, in denen der angemeldete User Mitglied ist. */
@@ -25,12 +43,12 @@ export async function useMyClubs() {
 
       const { data, error } = await supabase
         .from('club_members')
-        .select('role, club:clubs!inner(id, name)')
+        .select(`role, club:clubs!inner(${CLUB_COLUMNS})`)
         .eq('user_id', userId.value)
         .order('joined_at')
       if (error) throw error
 
-      return data.map(m => ({ id: m.club.id, name: m.club.name, role: m.role }))
+      return data.map(m => toMembership(m.club, m.role))
     },
     { default: () => [] }
   )
@@ -51,13 +69,13 @@ export async function useClub(clubId: MaybeRefOrGetter<string>) {
 
       const { data, error } = await supabase
         .from('club_members')
-        .select('role, club:clubs!inner(id, name)')
+        .select(`role, club:clubs!inner(${CLUB_COLUMNS})`)
         .eq('club_id', id)
         .eq('user_id', userId.value)
         .maybeSingle()
       if (error) throw error
 
-      return data ? { id: data.club.id, name: data.club.name, role: data.role } : null
+      return data ? toMembership(data.club, data.role) : null
     }
   )
 
@@ -73,5 +91,22 @@ export function useCreateClub() {
     const { data, error } = await supabase.rpc('create_club', { p_name: name })
     if (error) throw error
     return data
+  }
+}
+
+export function useUpdateClub() {
+  const supabase = useSupabaseClient()
+
+  return async (clubId: string, input: { name: string, team: ClubTeam }) => {
+    const { error } = await supabase
+      .from('clubs')
+      .update({
+        name: input.name,
+        league_shortcut: input.team.league,
+        team_id: input.team.teamId,
+        team_name: input.team.name
+      })
+      .eq('id', clubId)
+    if (error) throw error
   }
 }

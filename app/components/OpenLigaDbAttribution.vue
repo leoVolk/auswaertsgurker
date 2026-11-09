@@ -1,0 +1,20 @@
+<template>
+  <p class="text-xs text-muted">
+    Spielplandaten:
+    <ULink
+      to="https://www.openligadb.de"
+      target="_blank"
+      class="underline"
+    >
+      OpenLigaDB
+    </ULink>,
+    Lizenz
+    <ULink
+      to="https://opendatacommons.org/licenses/odbl/"
+      target="_blank"
+      class="underline"
+    >
+      ODbL
+    </ULink>
+  </p>
+</template>

@@ -40,8 +40,22 @@ Es gibt noch kein Test-Framework. Die CI (`.github/workflows/ci.yml`, Node 24) f
 Push `pnpm lint` und `pnpm typecheck` aus; beides muss grün sein.
 
 ## Architektur
-- **Datenmodell:** `profiles` (1:1 zu `auth.users`, per Trigger angelegt), `clubs`,
-  `club_members` (Rolle als Enum `club_role`), `club_invites` (ein aktiver Link pro Club).
+- **Datenmodell:** `profiles` (1:1 zu `auth.users`, per Trigger angelegt), `clubs` (inkl.
+  Verein aus OpenLigaDB), `club_members` (Rolle als Enum `club_role`), `club_invites` (ein aktiver
+  Link pro Club), `away_games` (Auswärtsspiel pro Club, Anker für Fahrten und Ticketabfragen,
+  angelegt per RPC `ensure_away_game`), `trips`. Tabellen mit `club_id`, die auf eine andere
+  Club-Tabelle zeigen, nutzen einen zusammengesetzten Fremdschlüssel `(x_id, club_id)`, damit
+  nichts clubübergreifend verknüpft werden kann.
+- **OpenLigaDB:** Nur über die Server-Routen `server/api/openligadb/*` (gecacht in
+  `server/utils/openligadb.ts`), nie direkt aus dem Client. Nicht terminierte Spieltage erkennt man
+  daran, dass alle Spiele denselben Platzhalter-Anstoß haben (Ausnahme: letzter Spieltag) →
+  `kickoffAt: null` plus `provisionalAt`. Angezeigt wird die Live-Zeit aus OpenLigaDB, in
+  `away_games.kickoff_at` steht der Stand beim Planen. Keine Vereinswappen laden (externe Hosts,
+  IP-Weitergabe).
+- **`shared/`:** Typen und Helfer für App und Server (`LeagueShortcut`, `currentSeason()`,
+  `AwayMatch`); Import per `#shared/...`.
+- **Zeiten:** Ein- und Ausgabe in Europe/Berlin über `app/utils/datetime.ts`
+  (`formatDateTime`, `toBerlinInput`/`fromBerlinInput` für `<UInput type="datetime-local">`).
 - **RLS-Muster:** Policies nutzen die `security definer`-Funktionen `is_club_member(club_id)` und
   `is_club_organizer(club_id)`, damit es keine Rekursion auf `club_members` gibt. Schreibvorgänge
   über mehrere Tabellen oder ohne direkte Insert-Policy laufen über RPCs (`create_club`,
@@ -74,6 +88,9 @@ Push `pnpm lint` und `pnpm typecheck` aus; beides muss grün sein.
   keine `user`-Eigenschaft.
 - **Imports:** `@supabase/supabase-js` ist keine direkte Abhängigkeit und mit pnpm nicht
   importierbar, auch nicht nur für Typen.
+- **RPC-Parameter mit `null`:** Die generierten Typen kennen bei Funktionsargumenten kein `null`.
+  Parameter trotzdem immer mitschicken (`value as string`), nie weglassen, sonst findet PostgREST
+  die Funktion nicht.
 - **Typen:** Das Modul lädt `~/types/database.types.ts` automatisch, sobald die Datei existiert;
   danach sind `useSupabaseClient()` und die Server-Helfer typisiert. Nach jeder Migration
   die Typen neu generieren.

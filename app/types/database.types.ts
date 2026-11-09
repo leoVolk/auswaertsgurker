@@ -39,6 +39,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      away_games: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          kickoff_at: string | null
+          league_shortcut: string
+          matchday: number
+          openligadb_match_id: number
+          opponent_name: string
+          season: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          kickoff_at?: string | null
+          league_shortcut: string
+          matchday: number
+          openligadb_match_id: number
+          opponent_name: string
+          season: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          kickoff_at?: string | null
+          league_shortcut?: string
+          matchday?: number
+          openligadb_match_id?: number
+          opponent_name?: string
+          season?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "away_games_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_invites: {
         Row: {
           club_id: string
@@ -122,19 +166,28 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          league_shortcut: string | null
           name: string
+          team_id: number | null
+          team_name: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: string
+          league_shortcut?: string | null
           name: string
+          team_id?: number | null
+          team_name?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: string
+          league_shortcut?: string | null
           name?: string
+          team_id?: number | null
+          team_name?: string | null
         }
         Relationships: [
           {
@@ -164,12 +217,94 @@ export type Database = {
         }
         Relationships: []
       }
+      trips: {
+        Row: {
+          away_game_id: string
+          capacity: number | null
+          club_id: string
+          created_at: string
+          created_by: string | null
+          departure_at: string | null
+          id: string
+          meeting_point: string | null
+          notes: string | null
+          price_cents: number | null
+          registration_deadline: string | null
+          title: string | null
+          transport: Database["public"]["Enums"]["transport_mode"]
+        }
+        Insert: {
+          away_game_id: string
+          capacity?: number | null
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          departure_at?: string | null
+          id?: string
+          meeting_point?: string | null
+          notes?: string | null
+          price_cents?: number | null
+          registration_deadline?: string | null
+          title?: string | null
+          transport: Database["public"]["Enums"]["transport_mode"]
+        }
+        Update: {
+          away_game_id?: string
+          capacity?: number | null
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          departure_at?: string | null
+          id?: string
+          meeting_point?: string | null
+          notes?: string | null
+          price_cents?: number | null
+          registration_deadline?: string | null
+          title?: string | null
+          transport?: Database["public"]["Enums"]["transport_mode"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_away_game_id_club_id_fkey"
+            columns: ["away_game_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "away_games"
+            referencedColumns: ["id", "club_id"]
+          },
+          {
+            foreignKeyName: "trips_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       create_club: { Args: { p_name: string }; Returns: string }
+      ensure_away_game: {
+        Args: {
+          p_club_id: string
+          p_kickoff_at: string
+          p_league_shortcut: string
+          p_matchday: number
+          p_openligadb_match_id: number
+          p_opponent_name: string
+          p_season: number
+        }
+        Returns: string
+      }
       get_invite: {
         Args: { p_token: string }
         Returns: {
@@ -186,6 +321,7 @@ export type Database = {
     }
     Enums: {
       club_role: "organizer" | "member"
+      transport_mode: "bus" | "train" | "car"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -317,6 +453,7 @@ export const Constants = {
   public: {
     Enums: {
       club_role: ["organizer", "member"],
+      transport_mode: ["bus", "train", "car"],
     },
   },
 } as const
