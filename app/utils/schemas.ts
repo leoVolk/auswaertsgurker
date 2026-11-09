@@ -6,9 +6,14 @@ export const emailSchema = z.object({
 })
 export type EmailForm = z.output<typeof emailSchema>
 
-// Die Code-Länge ist im Supabase-Projekt einstellbar (6–10 Ziffern)
+// Muss zur Einstellung „Email OTP Length“ im Supabase-Projekt passen
+export const OTP_LENGTH = 8
+
+// UPinInput liefert die Ziffern einzeln; für Supabase werden sie zu einem String
 export const otpSchema = z.object({
-  code: z.string().trim().regex(/^\d{6,10}$/, 'Gib den Code aus der E-Mail ein (nur Ziffern).')
+  code: z.array(z.number())
+    .transform(digits => digits.join(''))
+    .pipe(z.string().regex(new RegExp(`^\\d{${OTP_LENGTH}}$`), `Gib alle ${OTP_LENGTH} Ziffern aus der E-Mail ein.`))
 })
 export type OtpForm = z.output<typeof otpSchema>
 

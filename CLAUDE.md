@@ -144,7 +144,9 @@ Schema auf Sicherheitsprobleme.
   rufen sie mit `await` auf. Pro Fanclub-Seite liefert `useClub(id)` den Club samt eigener Rolle
   (`null` = kein Mitglied).
 - **Login:** E-Mail-Code (`signInWithOtp` + `verifyOtp`) statt Magic Link, weil Links aus der
-  Mail im WhatsApp-In-App-Browser am PKCE-Flow scheitern. `/confirm` ist nur ein Fallback, falls
+  Mail im WhatsApp-In-App-Browser am PKCE-Flow scheitern. Der Code hat 8 Ziffern (`OTP_LENGTH` in
+  `app/utils/schemas.ts`, muss zu „Email OTP Length“ in Supabase passen) und wird per `UPinInput`
+  eingegeben; bei vollständiger Eingabe schickt das Formular automatisch ab. `/confirm` ist nur ein Fallback, falls
   die E-Mail-Vorlage noch einen Link enthält. `onboarding.global.ts` erzwingt einen Anzeigenamen.
 - **Mailversand:** Die Auth-Mails laufen über eigenes SMTP (Strato, Subdomain), eingetragen im
   Supabase-Dashboard. Ohne eigenes SMTP sind im Free-Plan die Vorlagen gesperrt, und der
