@@ -22,7 +22,7 @@
     </UHeader>
 
     <UMain>
-      <div class="mx-auto w-full max-w-4xl px-4 py-6 sm:py-10">
+      <div class="mx-auto w-full max-w-4xl lg:px-12 px-4 py-6 sm:py-10">
         <slot />
       </div>
     </UMain>
