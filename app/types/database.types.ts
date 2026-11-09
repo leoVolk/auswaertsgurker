@@ -217,6 +217,169 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_categories: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          name: string
+          price_cents: number
+          quota: number | null
+          round_id: string
+          sort_order: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          name: string
+          price_cents: number
+          quota?: number | null
+          round_id: string
+          sort_order?: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price_cents?: number
+          quota?: number | null
+          round_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_categories_round_id_club_id_fkey"
+            columns: ["round_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_rounds"
+            referencedColumns: ["id", "club_id"]
+          },
+        ]
+      }
+      ticket_requests: {
+        Row: {
+          category_id: string
+          club_id: string
+          created_at: string
+          holder_membership_number: string | null
+          holder_name: string
+          id: string
+          requested_by: string
+          round_id: string
+          status: Database["public"]["Enums"]["ticket_status"]
+          status_changed_at: string
+        }
+        Insert: {
+          category_id: string
+          club_id: string
+          created_at?: string
+          holder_membership_number?: string | null
+          holder_name: string
+          id?: string
+          requested_by: string
+          round_id: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          status_changed_at?: string
+        }
+        Update: {
+          category_id?: string
+          club_id?: string
+          created_at?: string
+          holder_membership_number?: string | null
+          holder_name?: string
+          id?: string
+          requested_by?: string
+          round_id?: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          status_changed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_requests_category_id_round_id_fkey"
+            columns: ["category_id", "round_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_categories"
+            referencedColumns: ["id", "round_id"]
+          },
+          {
+            foreignKeyName: "ticket_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_requests_round_id_club_id_fkey"
+            columns: ["round_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_rounds"
+            referencedColumns: ["id", "club_id"]
+          },
+        ]
+      }
+      ticket_rounds: {
+        Row: {
+          away_game_id: string
+          closed_at: string | null
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          max_tickets_per_member: number | null
+          membership_number_required: boolean
+          notes: string | null
+          request_deadline: string | null
+        }
+        Insert: {
+          away_game_id: string
+          closed_at?: string | null
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_tickets_per_member?: number | null
+          membership_number_required?: boolean
+          notes?: string | null
+          request_deadline?: string | null
+        }
+        Update: {
+          away_game_id?: string
+          closed_at?: string | null
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_tickets_per_member?: number | null
+          membership_number_required?: boolean
+          notes?: string | null
+          request_deadline?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_rounds_away_game_id_club_id_fkey"
+            columns: ["away_game_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "away_games"
+            referencedColumns: ["id", "club_id"]
+          },
+          {
+            foreignKeyName: "ticket_rounds_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_rounds_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_registrations: {
         Row: {
           club_id: string
@@ -337,6 +500,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_allocate_tickets: {
+        Args: { p_category_id: string }
+        Returns: {
+          allocated: number
+          waitlisted: number
+        }[]
+      }
+      cancel_ticket_request: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
       cancel_trip_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
@@ -390,11 +564,44 @@ export type Database = {
         Args: { p_trip_id: string }
         Returns: Database["public"]["Enums"]["registration_status"]
       }
+      request_ticket: {
+        Args: {
+          p_category_id: string
+          p_holder_name: string
+          p_membership_number: string
+        }
+        Returns: string
+      }
+      set_ticket_request_status: {
+        Args: {
+          p_request_id: string
+          p_status: Database["public"]["Enums"]["ticket_status"]
+        }
+        Returns: undefined
+      }
       shares_club_with: { Args: { p_user_id: string }; Returns: boolean }
+      ticket_round_is_open: {
+        Args: { p_round: Database["public"]["Tables"]["ticket_rounds"]["Row"] }
+        Returns: boolean
+      }
+      update_ticket_request_holder: {
+        Args: {
+          p_holder_name: string
+          p_membership_number: string
+          p_request_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       club_role: "organizer" | "member"
       registration_status: "requested" | "confirmed" | "waitlist" | "cancelled"
+      ticket_status:
+        | "requested"
+        | "allocated"
+        | "waitlist"
+        | "rejected"
+        | "cancelled"
       transport_mode: "bus" | "train" | "car"
     }
     CompositeTypes: {
@@ -528,6 +735,13 @@ export const Constants = {
     Enums: {
       club_role: ["organizer", "member"],
       registration_status: ["requested", "confirmed", "waitlist", "cancelled"],
+      ticket_status: [
+        "requested",
+        "allocated",
+        "waitlist",
+        "rejected",
+        "cancelled",
+      ],
       transport_mode: ["bus", "train", "car"],
     },
   },

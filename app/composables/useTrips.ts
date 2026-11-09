@@ -146,21 +146,11 @@ function toRow(input: TripInput) {
 
 export function useTripActions(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
+  const ensureAwayGame = useEnsureAwayGame()
 
   /** Legt das Auswärtsspiel bei Bedarf an (bzw. aktualisiert dessen Spieldaten) und dann die Fahrt. */
   async function createTrip(match: AwayMatch, input: TripInput) {
-    const { data: awayGameId, error: awayGameError } = await supabase.rpc('ensure_away_game', {
-      p_club_id: toValue(clubId),
-      p_openligadb_match_id: match.matchId,
-      p_league_shortcut: match.leagueShortcut,
-      p_season: match.season,
-      p_matchday: match.matchday,
-      p_opponent_name: match.opponentName,
-      // null = Termin offen (Platzhalter nicht speichern). Die generierten Typen kennen
-      // kein null für RPC-Parameter; weglassen geht nicht, sonst findet PostgREST die Funktion nicht.
-      p_kickoff_at: match.kickoffAt as string
-    })
-    if (awayGameError) throw awayGameError
+    const awayGameId = await ensureAwayGame(toValue(clubId), match)
 
     const { data, error } = await supabase
       .from('trips')

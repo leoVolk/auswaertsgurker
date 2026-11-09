@@ -10,11 +10,17 @@ const AUTH_MESSAGES: Record<string, string> = {
   validation_failed: 'Bitte prüfe deine Eingabe.'
 }
 
+/** Fehler mit einer Meldung, die direkt in der Oberfläche angezeigt werden darf */
+export class UserError extends Error {}
+
 /**
  * Übersetzt Fehler von Supabase in eine deutsche Meldung.
  * Meldungen aus eigenen Datenbankfunktionen (`raise exception`, Code P0001) sind bereits deutsch.
  */
 export function errorMessage(error: unknown, fallback = DEFAULT_MESSAGE): string {
+  if (error instanceof UserError) {
+    return error.message
+  }
   if (error && typeof error === 'object') {
     const { code, message } = error as { code?: unknown, message?: unknown }
 

@@ -6,6 +6,7 @@ const { club, isOrganizer } = await useClub(clubId)
 const { matches, error: matchesError } = await useAwayMatches(() => club.value?.team)
 const { tripsByMatch } = await useClubTrips(clubId)
 const { stats } = await useTripStats(clubId)
+const { roundsByMatch } = await useClubTicketRounds(clubId)
 
 useHead({ title: () => club.value?.name ?? 'Fanclub' })
 </script>
@@ -61,6 +62,7 @@ useHead({ title: () => club.value?.name ?? 'Fanclub' })
         :match="match"
         :trips="tripsByMatch.get(match.matchId) ?? []"
         :stats="stats"
+        :ticket-round="roundsByMatch.get(match.matchId)"
         :is-organizer="isOrganizer"
       />
 

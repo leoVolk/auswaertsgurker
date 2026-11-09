@@ -74,11 +74,19 @@ Schema auf Sicherheitsprobleme.
   Entfernen eines Mitglieds). `requested` belegt bereits einen Platz. Mitglieder lesen nur die
   eigene Anmeldung; Belegungszahlen kommen aus `get_trip_stats`, weil in diesen Zeilen künftig
   auch der Zahlungsstatus steht.
+- **Tickets:** `ticket_rounds` (eine pro `away_game`) → `ticket_categories` (Preis, Kontingent,
+  `null` = noch offen) → `ticket_requests` (ein Ticket pro Zeile, Inhaber + optionale
+  Mitgliedsnummer). Zuteilung durch Organisatoren per `set_ticket_request_status` (prüft das
+  Kontingent unter Sperre) bzw. `auto_allocate_tickets` (nach Anfragezeitpunkt, Rest →
+  Warteliste); kein automatisches Nachrücken. Mitglieder schreiben nur über `request_ticket`,
+  `update_ticket_request_holder` und `cancel_ticket_request` (nur solange nicht zugeteilt).
+  Kategorien mit Anfragen sind per Fremdschlüssel (NO ACTION) gegen Löschen geschützt.
 - **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für
   fachlich änderbare Spalten gewährt (`grant update (col) ...`). Neue änderbare Spalten brauchen
   in der Migration ein eigenes `grant update`, sonst schlägt das Update mit 42501 fehl.
 - **Fehlermeldungen:** `raise exception` in DB-Funktionen auf Deutsch formulieren; `errorMessage()`
-  (`app/utils/errors.ts`) gibt Meldungen mit Code P0001 direkt an die Oberfläche weiter.
+  (`app/utils/errors.ts`) gibt Meldungen mit Code P0001 direkt an die Oberfläche weiter. Im
+  Client erzeugte Meldungen als `throw new UserError('…')`.
 - **Composables:** Lesende Composables sind `async` und kapseln `await useAsyncData(...)`; Seiten
   rufen sie mit `await` auf. Pro Fanclub-Seite liefert `useClub(id)` den Club samt eigener Rolle
   (`null` = kein Mitglied).

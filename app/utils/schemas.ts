@@ -55,6 +55,42 @@ export const tripFormSchema = z.object({
 )
 export type TripForm = z.output<typeof tripFormSchema>
 
+export const ticketRoundFormSchema = z.object({
+  // Wert aus <input type="datetime-local">, leer = keine Frist
+  requestDeadline: z.string(),
+  maxTicketsPerMember: z.number().int('Bitte gib eine ganze Zahl ein.')
+    .min(1, 'Mindestens 1 Ticket.')
+    .max(20, 'Höchstens 20 Tickets.')
+    .nullish(),
+  membershipNumberRequired: z.boolean(),
+  notes: z.string().trim().max(2000, 'Höchstens 2000 Zeichen.'),
+  categories: z.array(z.object({
+    id: z.string().optional(),
+    name: z.string().trim().min(1, 'Bitte gib einen Namen ein.').max(60, 'Höchstens 60 Zeichen.'),
+    price: z.number('Bitte gib einen Preis ein.')
+      .min(0, 'Der Preis kann nicht negativ sein.')
+      .max(1000, 'Höchstens 1.000 €.'),
+    quota: z.number().int('Bitte gib eine ganze Zahl ein.')
+      .min(0, 'Das Kontingent kann nicht negativ sein.')
+      .max(10000, 'Höchstens 10.000 Tickets.')
+      .nullish()
+  })).min(1, 'Lege mindestens eine Kategorie an.')
+})
+export type TicketRoundForm = z.output<typeof ticketRoundFormSchema>
+
+export function ticketHolderSchema(membershipNumberRequired: boolean) {
+  const number = z.string().trim().max(40, 'Höchstens 40 Zeichen.')
+  return z.object({
+    holderName: z.string().trim()
+      .min(2, 'Bitte gib den Namen des Inhabers ein.')
+      .max(80, 'Höchstens 80 Zeichen.'),
+    membershipNumber: membershipNumberRequired
+      ? number.min(1, 'Für diese Abfrage brauchst du die Mitgliedsnummer.')
+      : number
+  })
+}
+export type TicketHolderForm = z.output<ReturnType<typeof ticketHolderSchema>>
+
 export function isUuid(value: string) {
   return z.uuid().safeParse(value).success
 }
