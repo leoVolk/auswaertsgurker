@@ -71,35 +71,42 @@ async function onCancel() {
     <li
       v-for="request in requests"
       :key="request.id"
-      class="flex items-center gap-3 px-3 py-2.5"
+      class="space-y-2 px-3 py-2.5"
       :class="{ 'opacity-60': request.status === 'cancelled' || request.status === 'rejected' }"
     >
-      <span class="min-w-0 flex-1">
-        <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
-        <span class="block text-sm text-muted">
-          {{ categoryLabel(request) }}
-          <template v-if="request.holderMembershipNumber"> · Nr. {{ request.holderMembershipNumber }}</template>
+      <div class="flex items-center gap-3">
+        <span class="min-w-0 flex-1">
+          <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
+          <span class="block text-sm text-muted">
+            {{ categoryLabel(request) }}
+            <template v-if="request.holderMembershipNumber"> · Nr. {{ request.holderMembershipNumber }}</template>
+          </span>
         </span>
-      </span>
-      <UBadge
-        :label="TICKET_STATUS[request.status].label"
-        :color="TICKET_STATUS[request.status].color"
-        variant="subtle"
-        size="sm"
-        class="shrink-0"
-      />
-      <UDropdownMenu
-        v-if="request.status === 'requested' || request.status === 'waitlist'"
-        :items="actions(request)"
-        :content="{ align: 'end' }"
-      >
-        <UButton
-          icon="i-lucide-ellipsis-vertical"
-          color="neutral"
-          variant="ghost"
-          :aria-label="`Aktionen für ${request.holderName}`"
+        <UBadge
+          :label="TICKET_STATUS[request.status].label"
+          :color="TICKET_STATUS[request.status].color"
+          variant="subtle"
+          size="sm"
+          class="shrink-0"
         />
-      </UDropdownMenu>
+        <UDropdownMenu
+          v-if="request.status === 'requested' || request.status === 'waitlist'"
+          :items="actions(request)"
+          :content="{ align: 'end' }"
+        >
+          <UButton
+            icon="i-lucide-ellipsis-vertical"
+            color="neutral"
+            variant="ghost"
+            :aria-label="`Aktionen für ${request.holderName}`"
+          />
+        </UDropdownMenu>
+      </div>
+
+      <TicketDeliveryInfo
+        v-if="request.status === 'allocated'"
+        :request="request"
+      />
     </li>
   </ul>
 

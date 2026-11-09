@@ -263,37 +263,58 @@ export type Database = {
           category_id: string
           club_id: string
           created_at: string
+          delivery_method:
+            | Database["public"]["Enums"]["ticket_delivery_method"]
+            | null
           holder_membership_number: string | null
           holder_name: string
           id: string
+          pickup_at: string | null
+          pickup_location: string | null
           requested_by: string
           round_id: string
           status: Database["public"]["Enums"]["ticket_status"]
           status_changed_at: string
+          ticket_file_path: string | null
+          ticket_file_uploaded_at: string | null
         }
         Insert: {
           category_id: string
           club_id: string
           created_at?: string
+          delivery_method?:
+            | Database["public"]["Enums"]["ticket_delivery_method"]
+            | null
           holder_membership_number?: string | null
           holder_name: string
           id?: string
+          pickup_at?: string | null
+          pickup_location?: string | null
           requested_by: string
           round_id: string
           status?: Database["public"]["Enums"]["ticket_status"]
           status_changed_at?: string
+          ticket_file_path?: string | null
+          ticket_file_uploaded_at?: string | null
         }
         Update: {
           category_id?: string
           club_id?: string
           created_at?: string
+          delivery_method?:
+            | Database["public"]["Enums"]["ticket_delivery_method"]
+            | null
           holder_membership_number?: string | null
           holder_name?: string
           id?: string
+          pickup_at?: string | null
+          pickup_location?: string | null
           requested_by?: string
           round_id?: string
           status?: Database["public"]["Enums"]["ticket_status"]
           status_changed_at?: string
+          ticket_file_path?: string | null
+          ticket_file_uploaded_at?: string | null
         }
         Relationships: [
           {
@@ -500,6 +521,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attach_ticket_file: { Args: { p_request_id: string }; Returns: string }
       auto_allocate_tickets: {
         Args: { p_category_id: string }
         Returns: {
@@ -507,6 +529,9 @@ export type Database = {
           waitlisted: number
         }[]
       }
+      can_delete_ticket_file: { Args: { p_name: string }; Returns: boolean }
+      can_read_ticket_file: { Args: { p_name: string }; Returns: boolean }
+      can_upload_ticket_file: { Args: { p_name: string }; Returns: boolean }
       cancel_ticket_request: {
         Args: { p_request_id: string }
         Returns: undefined
@@ -524,6 +549,7 @@ export type Database = {
         Returns: undefined
       }
       create_club: { Args: { p_name: string }; Returns: string }
+      detach_ticket_file: { Args: { p_request_id: string }; Returns: string }
       ensure_away_game: {
         Args: {
           p_club_id: string
@@ -572,6 +598,15 @@ export type Database = {
         }
         Returns: string
       }
+      set_ticket_delivery: {
+        Args: {
+          p_method: Database["public"]["Enums"]["ticket_delivery_method"]
+          p_pickup_at: string
+          p_pickup_location: string
+          p_request_ids: string[]
+        }
+        Returns: string[]
+      }
       set_ticket_request_status: {
         Args: {
           p_request_id: string
@@ -580,6 +615,11 @@ export type Database = {
         Returns: undefined
       }
       shares_club_with: { Args: { p_user_id: string }; Returns: boolean }
+      ticket_file_path: {
+        Args: { p_club_id: string; p_request_id: string }
+        Returns: string
+      }
+      ticket_file_request_id: { Args: { p_name: string }; Returns: string }
       ticket_round_is_open: {
         Args: { p_round: Database["public"]["Tables"]["ticket_rounds"]["Row"] }
         Returns: boolean
@@ -596,6 +636,7 @@ export type Database = {
     Enums: {
       club_role: "organizer" | "member"
       registration_status: "requested" | "confirmed" | "waitlist" | "cancelled"
+      ticket_delivery_method: "pickup" | "box_office" | "digital"
       ticket_status:
         | "requested"
         | "allocated"
@@ -735,6 +776,7 @@ export const Constants = {
     Enums: {
       club_role: ["organizer", "member"],
       registration_status: ["requested", "confirmed", "waitlist", "cancelled"],
+      ticket_delivery_method: ["pickup", "box_office", "digital"],
       ticket_status: [
         "requested",
         "allocated",

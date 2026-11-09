@@ -81,6 +81,15 @@ Schema auf Sicherheitsprobleme.
   Warteliste); kein automatisches Nachrücken. Mitglieder schreiben nur über `request_ticket`,
   `update_ticket_request_holder` und `cancel_ticket_request` (nur solange nicht zugeteilt).
   Kategorien mit Anfragen sind per Fremdschlüssel (NO ACTION) gegen Löschen geschützt.
+- **Ticket-Hinterlegung:** `ticket_requests.delivery_method` (`pickup` mit Ort/Zeit, `box_office`,
+  `digital`). PDFs liegen im privaten Bucket `ticket-files` unter `<club_id>/<request_id>.pdf`;
+  Storage-Policies über `can_read_ticket_file` (anfragende Person nur bei zugeteiltem und
+  angehängtem Ticket, Organisatoren immer), `can_upload_ticket_file`, `can_delete_ticket_file`.
+  Ablauf: Upload per Storage-API → `attach_ticket_file`; Lösen per `detach_ticket_file` bzw.
+  `set_ticket_delivery`, die zurückgegebenen Pfade löscht der Client aus dem Storage.
+  Downloads nur über kurzlebige signierte URLs. Storage-Dateien nie per SQL löschen.
+- **Offen – Löschfrist:** Mitgliedsnummern und Ticket-PDFs 30 Tage nach dem Spiel löschen. Braucht
+  einen Server-Job mit `NUXT_SUPABASE_SECRET_KEY` und täglichem Cron; kommt mit dem Deployment.
 - **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für
   fachlich änderbare Spalten gewährt (`grant update (col) ...`). Neue änderbare Spalten brauchen
   in der Migration ein eigenes `grant update`, sonst schlägt das Update mit 42501 fehl.

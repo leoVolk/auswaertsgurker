@@ -3,6 +3,7 @@ import type { AwayMatch } from '#shared/types/openligadb'
 import type { Enums } from '~/types/database.types'
 
 export type TicketStatus = Enums<'ticket_status'>
+export type TicketDeliveryMethod = Enums<'ticket_delivery_method'>
 
 export const TICKET_STATUS: Record<TicketStatus, { label: string, color: BadgeProps['color'] }> = {
   requested: { label: 'Angefragt', color: 'warning' },
@@ -47,6 +48,10 @@ export interface TicketRequest {
   holderName: string
   holderMembershipNumber: string | null
   status: TicketStatus
+  deliveryMethod: TicketDeliveryMethod | null
+  pickupLocation: string | null
+  pickupAt: string | null
+  ticketFilePath: string | null
 }
 
 export interface TicketRoundSummary {
@@ -177,6 +182,7 @@ export async function useTicketRequests(roundId: MaybeRefOrGetter<string>) {
         .from('ticket_requests')
         .select(`
           id, category_id, requested_by, holder_name, holder_membership_number, status,
+          delivery_method, pickup_location, pickup_at, ticket_file_path,
           requester:profiles!inner(display_name)
         `)
         .eq('round_id', id)
@@ -190,7 +196,11 @@ export async function useTicketRequests(roundId: MaybeRefOrGetter<string>) {
         requesterName: r.requester.display_name ?? 'Ohne Namen',
         holderName: r.holder_name,
         holderMembershipNumber: r.holder_membership_number,
-        status: r.status
+        status: r.status,
+        deliveryMethod: r.delivery_method,
+        pickupLocation: r.pickup_location,
+        pickupAt: r.pickup_at,
+        ticketFilePath: r.ticket_file_path
       }))
     },
     { default: () => [] }
@@ -335,9 +345,112 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
   }
 
   async function deleteRound(roundId: string) {
+    // Ticket-PDFs zuerst aus dem Storage entfernen; nach dem Löschen der Anfragen ginge das nicht mehr
+    const { data: files, error: filesError } = await supabase
+      .from('ticket_requests')
+      .select('ticket_file_path')
+      .eq('round_id', roundId)
+      .not('ticket_file_path', 'is', null)
+    if (filesError) throw filesError
+    const paths = files.flatMap(file => (file.ticket_file_path ? [file.ticket_file_path] : []))
+    if (paths.length) {
+      const { error: storageError } = await supabase.storage.from(TICKET_FILES_BUCKET).remove(paths)
+      if (storageError) throw storageError
+    }
+
     const { error } = await supabase.from('ticket_rounds').delete().eq('id', roundId)
     if (error) throw error
   }
 
   return { createRound, updateRound, setClosed, deleteRound }
+}
+
+// ---------------------------------------------------------------------------
+// Hinterlegung
+// ---------------------------------------------------------------------------
+
+export const TICKET_FILES_BUCKET = 'ticket-files'
+export const TICKET_FILE_MAX_BYTES = 5 * 1024 * 1024
+
+export const TICKET_DELIVERY: Record<TicketDeliveryMethod, { label: string, icon: string }> = {
+  digital: { label: 'PDF', icon: 'i-lucide-file-text' },
+  pickup: { label: 'Abholung', icon: 'i-lucide-map-pin' },
+  box_office: { label: 'Gästekasse', icon: 'i-lucide-store' }
+}
+
+/** Prüft eine Ticketdatei vor dem Upload; liefert eine Fehlermeldung oder null. */
+export function ticketFileProblem(file: File) {
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    return `„${file.name}“ ist keine PDF-Datei.`
+  }
+  if (file.size > TICKET_FILE_MAX_BYTES) {
+    return `„${file.name}“ ist größer als 5 MB.`
+  }
+  return null
+}
+
+export function useTicketDeliveryActions(clubId: MaybeRefOrGetter<string>) {
+  const supabase = useSupabaseClient()
+  const bucket = () => supabase.storage.from(TICKET_FILES_BUCKET)
+
+  async function uploadTicketFile(requestId: string, file: File) {
+    const problem = ticketFileProblem(file)
+    if (problem) throw new UserError(problem)
+
+    const path = `${toValue(clubId)}/${requestId}.pdf`
+    const { error: uploadError } = await bucket().upload(path, file, {
+      upsert: true,
+      contentType: 'application/pdf'
+    })
+    if (uploadError) throw uploadError
+
+    const { error } = await supabase.rpc('attach_ticket_file', { p_request_id: requestId })
+    if (error) throw error
+  }
+
+  async function removeTicketFile(requestId: string) {
+    const { data: path, error } = await supabase.rpc('detach_ticket_file', { p_request_id: requestId })
+    if (error) throw error
+    if (path) {
+      const { error: storageError } = await bucket().remove([path])
+      if (storageError) throw storageError
+    }
+  }
+
+  async function setDelivery(
+    requestIds: string[],
+    method: TicketDeliveryMethod,
+    pickupLocation: string | null,
+    pickupAt: string | null
+  ) {
+    // Die generierten Typen kennen kein null für RPC-Parameter; null wird trotzdem korrekt übertragen
+    const { data: detachedPaths, error } = await supabase.rpc('set_ticket_delivery', {
+      p_request_ids: requestIds,
+      p_method: method,
+      p_pickup_location: pickupLocation as string,
+      p_pickup_at: pickupAt as string
+    })
+    if (error) throw error
+    if (detachedPaths.length) {
+      const { error: storageError } = await bucket().remove(detachedPaths)
+      if (storageError) throw storageError
+    }
+  }
+
+  return { uploadTicketFile, removeTicketFile, setDelivery }
+}
+
+/** Öffnet ein Ticket-PDF über einen kurzlebigen signierten Link (Rechte prüft die Storage-Policy). */
+export function useOpenTicketFile() {
+  const supabase = useSupabaseClient()
+
+  return async (path: string, holderName: string) => {
+    const fileName = `Ticket-${holderName.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '')}.pdf`
+    const { data, error } = await supabase.storage
+      .from(TICKET_FILES_BUCKET)
+      .createSignedUrl(path, 60, { download: fileName })
+    if (error) throw error
+    // Gleicher Tab statt Pop-up, das blockieren In-App-Browser nach async-Aufrufen gern
+    window.location.assign(data.signedUrl)
+  }
 }

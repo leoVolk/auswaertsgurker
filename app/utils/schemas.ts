@@ -91,6 +91,17 @@ export function ticketHolderSchema(membershipNumberRequired: boolean) {
 }
 export type TicketHolderForm = z.output<ReturnType<typeof ticketHolderSchema>>
 
+export const ticketDeliverySchema = z.object({
+  method: z.enum(Constants.public.Enums.ticket_delivery_method, 'Bitte wähle, wie die Tickets hinterlegt werden.'),
+  pickupLocation: z.string().trim().max(200, 'Höchstens 200 Zeichen.'),
+  // Wert aus <input type="datetime-local">, leer = keine feste Zeit
+  pickupAt: z.string()
+}).refine(
+  delivery => delivery.method !== 'pickup' || delivery.pickupLocation.length > 0,
+  { message: 'Bitte gib an, wo die Tickets abgeholt werden.', path: ['pickupLocation'] }
+)
+export type TicketDeliveryForm = z.output<typeof ticketDeliverySchema>
+
 export function isUuid(value: string) {
   return z.uuid().safeParse(value).success
 }

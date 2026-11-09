@@ -10,8 +10,95 @@ const props = defineProps<{
 const emit = defineEmits<{ changed: [] }>()
 
 const { setStatus, cancelRequest, autoAllocate } = useTicketRequestActions()
+const { removeTicketFile } = useTicketDeliveryActions(() => props.round.clubId)
+const openTicketFile = useOpenTicketFile()
 const toast = useToast()
 const showError = useErrorToast()
+
+const allocatedRequests = computed(() => props.requests.filter(r => r.status === 'allocated'))
+
+// Hinterlegung festlegen (einzeln oder für alle zugeteilten Tickets)
+const deliveryTargets = ref<TicketRequest[]>([])
+const deliveryOpen = ref(false)
+
+function openDelivery(targets: TicketRequest[]) {
+  deliveryTargets.value = targets
+  deliveryOpen.value = true
+}
+
+// PDF-Upload (einzeln oder gesammelt)
+const uploadTarget = ref<TicketRequest | null>(null)
+const uploadOpen = ref(false)
+
+function openUpload(target: TicketRequest | null) {
+  uploadTarget.value = target
+  uploadOpen.value = true
+}
+
+/** Kurzinfo zur Hinterlegung eines Tickets in der Liste */
+function deliveryLine(request: TicketRequest) {
+  if (request.status !== 'allocated') {
+    return request.ticketFilePath
+      ? { icon: 'i-lucide-file-warning', text: 'PDF noch hinterlegt', class: 'text-warning' }
+      : null
+  }
+  switch (request.deliveryMethod) {
+    case 'digital':
+      return request.ticketFilePath
+        ? { icon: 'i-lucide-file-check', text: 'PDF hinterlegt', class: 'text-success' }
+        : { icon: 'i-lucide-file-x', text: 'PDF fehlt', class: 'text-warning' }
+    case 'pickup':
+      return {
+        icon: 'i-lucide-map-pin',
+        text: `Abholung: ${request.pickupLocation}${request.pickupAt ? `, ${formatDateTime(request.pickupAt)}` : ''}`,
+        class: 'text-muted'
+      }
+    case 'box_office':
+      return { icon: 'i-lucide-store', text: 'Gästekasse', class: 'text-muted' }
+    default:
+      return { icon: 'i-lucide-circle-dashed', text: 'Hinterlegung offen', class: 'text-muted' }
+  }
+}
+
+function ticketActions(request: TicketRequest): DropdownMenuItem[] {
+  const items: DropdownMenuItem[] = []
+  if (request.status === 'allocated') {
+    items.push(
+      {
+        label: request.ticketFilePath ? 'PDF ersetzen' : 'PDF hochladen',
+        icon: 'i-lucide-file-up',
+        onSelect: () => openUpload(request)
+      },
+      {
+        label: 'Hinterlegung festlegen',
+        icon: 'i-lucide-package-check',
+        onSelect: () => openDelivery([request])
+      }
+    )
+  }
+  if (request.ticketFilePath) {
+    const path = request.ticketFilePath
+    items.push(
+      {
+        label: 'PDF ansehen',
+        icon: 'i-lucide-eye',
+        onSelect: async () => {
+          try {
+            await openTicketFile(path, request.holderName)
+          } catch (error) {
+            showError(error, 'Das PDF konnte nicht geladen werden.')
+          }
+        }
+      },
+      {
+        label: 'PDF entfernen',
+        icon: 'i-lucide-file-minus',
+        onSelect: () => run(() => removeTicketFile(request.id), `PDF von ${request.holderName} entfernt`)
+      }
+    )
+  }
+  return items
+}
 
 const STATUS_ORDER: TicketStatus[] = ['requested', 'waitlist', 'allocated', 'rejected', 'cancelled']
 
@@ -99,6 +186,7 @@ function actions(request: TicketRequest): DropdownMenuItem[][] {
 
   return [
     statusActions,
+    ticketActions(request),
     [{
       label: 'Inhaber ändern',
       icon: 'i-lucide-pencil',
@@ -144,10 +232,10 @@ async function copyAllocatedList() {
 
 <template>
   <section class="space-y-3">
-    <div class="flex items-center justify-between gap-3">
-      <h2 class="text-lg font-semibold text-highlighted">
-        Alle Anfragen
-      </h2>
+    <h2 class="text-lg font-semibold text-highlighted">
+      Alle Anfragen
+    </h2>
+    <div class="flex flex-wrap gap-2">
       <UButton
         label="Liste kopieren"
         icon="i-lucide-clipboard-list"
@@ -156,6 +244,24 @@ async function copyAllocatedList() {
         size="sm"
         @click="copyAllocatedList"
       />
+      <template v-if="allocatedRequests.length">
+        <UButton
+          label="PDFs hochladen"
+          icon="i-lucide-file-up"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="openUpload(null)"
+        />
+        <UButton
+          label="Hinterlegung für alle"
+          icon="i-lucide-package-check"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="openDelivery(allocatedRequests)"
+        />
+      </template>
     </div>
 
     <UCard
@@ -233,6 +339,17 @@ async function copyAllocatedList() {
                 <template v-if="request.requesterName !== request.holderName && request.holderMembershipNumber"> · </template>
                 <template v-if="request.holderMembershipNumber">Nr. {{ request.holderMembershipNumber }}</template>
               </span>
+              <span
+                v-if="deliveryLine(request)"
+                class="flex items-center gap-1.5 text-sm"
+                :class="deliveryLine(request)?.class"
+              >
+                <UIcon
+                  :name="deliveryLine(request)?.icon ?? ''"
+                  class="size-4 shrink-0"
+                />
+                <span class="truncate">{{ deliveryLine(request)?.text }}</span>
+              </span>
             </span>
             <UDropdownMenu
               v-if="group.status !== 'cancelled'"
@@ -256,6 +373,22 @@ async function copyAllocatedList() {
       :request="editRequest"
       :membership-number-required="round.membershipNumberRequired"
       @saved="emit('changed')"
+    />
+
+    <TicketDeliveryModal
+      v-model:open="deliveryOpen"
+      :club-id="round.clubId"
+      :requests="deliveryTargets"
+      @saved="emit('changed')"
+    />
+
+    <TicketFileUploadModal
+      v-model:open="uploadOpen"
+      :club-id="round.clubId"
+      :categories="round.categories"
+      :candidates="allocatedRequests"
+      :target="uploadTarget"
+      @uploaded="emit('changed')"
     />
 
     <UModal
