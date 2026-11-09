@@ -136,18 +136,23 @@ function ticketActions(request: TicketRequest): DropdownMenuItem[] {
   return items
 }
 
-const STATUS_ORDER: TicketStatus[] = ['requested', 'waitlist', 'allocated', 'rejected', 'cancelled']
+// Stornierte stehen zugeklappt unter den übrigen Gruppen
+const STATUS_ORDER: TicketStatus[] = ['requested', 'waitlist', 'allocated', 'rejected']
 
 const categories = computed(() => props.round.categories.map((category) => {
   const requests = props.requests.filter(r => r.categoryId === category.id)
   const count = (status: TicketStatus) => requests.filter(r => r.status === status).length
+  const cancelled = requests.filter(r => r.status === 'cancelled')
   return {
     ...category,
     allocated: count('allocated'),
     pending: count('requested') + count('waitlist'),
     groups: STATUS_ORDER
       .map(status => ({ status, items: requests.filter(r => r.status === status) }))
-      .filter(group => group.items.length > 0)
+      .filter(group => group.items.length > 0),
+    cancelled,
+    // Bezahlt, aber storniert: Organisatoren müssen erstatten
+    refundsOpen: cancelled.filter(r => r.paymentStatus === 'confirmed').length
   }
 }))
 
@@ -369,7 +374,7 @@ async function copyAllocatedList() {
       />
 
       <p
-        v-if="!category.groups.length"
+        v-if="!category.groups.length && !category.cancelled.length"
         class="text-sm text-muted"
       >
         Noch keine Anfragen.
@@ -389,55 +394,49 @@ async function copyAllocatedList() {
           />
           {{ group.items.length }}
         </h4>
-        <ul class="divide-y divide-default rounded-md border border-default">
-          <li
-            v-for="request in group.items"
-            :key="request.id"
-            class="flex items-center gap-3 px-3 py-2"
-            :class="{ 'opacity-60': (group.status === 'cancelled' || group.status === 'rejected') && request.paymentStatus !== 'confirmed' }"
-          >
-            <span class="min-w-0 flex-1">
-              <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
-              <span class="block truncate text-sm text-muted">
-                <template v-if="request.requesterName !== request.holderName">über {{ request.requesterName }}</template>
-                <template v-if="request.requesterName !== request.holderName && request.holderMembershipNumber"> · </template>
-                <template v-if="request.holderMembershipNumber">Nr. {{ request.holderMembershipNumber }}</template>
-              </span>
-              <span
-                v-if="deliveryLine(request)"
-                class="flex items-center gap-1.5 text-sm"
-                :class="deliveryLine(request)?.class"
-              >
-                <UIcon
-                  :name="deliveryLine(request)?.icon ?? ''"
-                  class="size-4 shrink-0"
-                />
-                <span class="truncate">{{ deliveryLine(request)?.text }}</span>
-              </span>
-              <UBadge
-                v-if="paymentBadge(request)"
-                :label="paymentBadge(request)?.label"
-                :color="paymentBadge(request)?.color"
-                variant="outline"
-                size="sm"
-                class="mt-1"
-              />
-            </span>
-            <UDropdownMenu
-              v-if="actions(request).length"
-              :items="actions(request)"
-              :content="{ align: 'end' }"
-            >
-              <UButton
-                icon="i-lucide-ellipsis-vertical"
-                color="neutral"
-                variant="ghost"
-                :aria-label="`Aktionen für ${request.holderName}`"
-              />
-            </UDropdownMenu>
-          </li>
-        </ul>
+        <TicketRequestRows
+          :requests="group.items"
+          :dimmed="group.status === 'rejected'"
+          :delivery-line="deliveryLine"
+          :payment-badge="paymentBadge"
+          :actions="actions"
+        />
       </section>
+
+      <UCollapsible
+        v-if="category.cancelled.length"
+        class="flex flex-col gap-2"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          trailing-icon="i-lucide-chevron-down"
+          block
+          class="group justify-between"
+          :ui="{ trailingIcon: 'transition-transform duration-200 group-data-[state=open]:rotate-180' }"
+        >
+          <span class="flex flex-wrap items-center gap-2">
+            <span class="text-sm text-muted">Storniert ({{ category.cancelled.length }})</span>
+            <UBadge
+              v-if="category.refundsOpen"
+              :label="category.refundsOpen === 1 ? '1 Erstattung offen' : `${category.refundsOpen} Erstattungen offen`"
+              color="warning"
+              variant="subtle"
+              size="sm"
+            />
+          </span>
+        </UButton>
+
+        <template #content>
+          <TicketRequestRows
+            :requests="category.cancelled"
+            dimmed
+            :delivery-line="deliveryLine"
+            :payment-badge="paymentBadge"
+            :actions="actions"
+          />
+        </template>
+      </UCollapsible>
     </UCard>
 
     <TicketHolderModal

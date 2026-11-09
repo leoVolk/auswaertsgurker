@@ -30,6 +30,10 @@ const showError = useErrorToast()
 
 const categoryById = computed(() => new Map(props.categories.map(category => [category.id, category])))
 
+// Stornierte stehen zugeklappt unter den übrigen Anfragen
+const activeRequests = computed(() => props.requests.filter(r => r.status !== 'cancelled'))
+const cancelledRequests = computed(() => props.requests.filter(r => r.status === 'cancelled'))
+
 function categoryLabel(request: TicketRequest) {
   const category = categoryById.value.get(request.categoryId)
   return category ? `${category.name} · ${formatPrice(category.priceCents)}` : ''
@@ -81,57 +85,100 @@ async function onCancel() {
 </script>
 
 <template>
-  <ul class="divide-y divide-default rounded-md border border-default">
-    <li
-      v-for="request in requests"
-      :key="request.id"
-      class="space-y-2 px-3 py-2.5"
-      :class="{ 'opacity-60': request.status === 'cancelled' || request.status === 'rejected' }"
+  <div class="space-y-3">
+    <ul
+      v-if="activeRequests.length"
+      class="divide-y divide-default rounded-md border border-default"
     >
-      <div class="flex items-center gap-3">
-        <span class="min-w-0 flex-1">
-          <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
-          <span class="block text-sm text-muted">
-            {{ categoryLabel(request) }}
-            <template v-if="request.holderMembershipNumber"> · Nr. {{ request.holderMembershipNumber }}</template>
+      <li
+        v-for="request in activeRequests"
+        :key="request.id"
+        class="space-y-2 px-3 py-2.5"
+        :class="{ 'opacity-60': request.status === 'rejected' }"
+      >
+        <div class="flex items-center gap-3">
+          <span class="min-w-0 flex-1">
+            <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
+            <span class="block text-sm text-muted">
+              {{ categoryLabel(request) }}
+              <template v-if="request.holderMembershipNumber"> · Nr. {{ request.holderMembershipNumber }}</template>
+            </span>
+            <UBadge
+              v-if="paymentBadge(request)"
+              :label="paymentBadge(request)?.label"
+              :color="paymentBadge(request)?.color"
+              variant="outline"
+              size="sm"
+              class="mt-1"
+            />
           </span>
           <UBadge
-            v-if="paymentBadge(request)"
-            :label="paymentBadge(request)?.label"
-            :color="paymentBadge(request)?.color"
-            variant="outline"
+            :label="TICKET_STATUS[request.status].label"
+            :color="TICKET_STATUS[request.status].color"
+            variant="subtle"
             size="sm"
-            class="mt-1"
+            class="shrink-0"
           />
-        </span>
-        <UBadge
-          :label="TICKET_STATUS[request.status].label"
-          :color="TICKET_STATUS[request.status].color"
-          variant="subtle"
-          size="sm"
-          class="shrink-0"
-        />
-        <UDropdownMenu
-          v-if="request.status === 'requested' || request.status === 'waitlist'"
-          :items="actions(request)"
-          :content="{ align: 'end' }"
-        >
-          <UButton
-            icon="i-lucide-ellipsis-vertical"
-            color="neutral"
-            variant="ghost"
-            :aria-label="`Aktionen für ${request.holderName}`"
-          />
-        </UDropdownMenu>
-      </div>
+          <UDropdownMenu
+            v-if="request.status === 'requested' || request.status === 'waitlist'"
+            :items="actions(request)"
+            :content="{ align: 'end' }"
+          >
+            <UButton
+              icon="i-lucide-ellipsis-vertical"
+              color="neutral"
+              variant="ghost"
+              :aria-label="`Aktionen für ${request.holderName}`"
+            />
+          </UDropdownMenu>
+        </div>
 
-      <TicketDeliveryInfo
-        v-if="request.status === 'allocated' && !purged"
-        :request="request"
-        :download-requires-payment="downloadRequiresPayment"
+        <TicketDeliveryInfo
+          v-if="request.status === 'allocated' && !purged"
+          :request="request"
+          :download-requires-payment="downloadRequiresPayment"
+        />
+      </li>
+    </ul>
+
+    <UCollapsible
+      v-if="cancelledRequests.length"
+      class="flex flex-col gap-2"
+    >
+      <UButton
+        :label="`Stornierte Anfragen (${cancelledRequests.length})`"
+        color="neutral"
+        variant="ghost"
+        trailing-icon="i-lucide-chevron-down"
+        block
+        class="group justify-between text-muted"
+        :ui="{ trailingIcon: 'transition-transform duration-200 group-data-[state=open]:rotate-180' }"
       />
-    </li>
-  </ul>
+
+      <template #content>
+        <ul class="divide-y divide-default rounded-md border border-default">
+          <li
+            v-for="request in cancelledRequests"
+            :key="request.id"
+            class="flex items-center gap-3 px-3 py-2.5"
+          >
+            <span class="min-w-0 flex-1 opacity-60">
+              <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
+              <span class="block text-sm text-muted">{{ categoryLabel(request) }}</span>
+            </span>
+            <UBadge
+              v-if="paymentBadge(request)"
+              :label="paymentBadge(request)?.label"
+              :color="paymentBadge(request)?.color"
+              variant="outline"
+              size="sm"
+              class="shrink-0"
+            />
+          </li>
+        </ul>
+      </template>
+    </UCollapsible>
+  </div>
 
   <TicketHolderModal
     v-model:open="editOpen"
