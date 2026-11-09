@@ -31,24 +31,49 @@ verwenden, sonst entsteht eine zweite Lockfile.
 - `pnpm lint` (`pnpm lint --fix`) – ESLint
 - `pnpm typecheck` – Typprüfung (`nuxt typecheck`)
 - `pnpm exec supabase migration new <name>` – neue Migration in `supabase/migrations/`
-- `pnpm exec supabase db push` – Migrationen anwenden (nur nach Rückfrage bei mir)
+- `pnpm exec supabase db push --remote` – Migrationen anwenden (nur nach Rückfrage bei mir).
+  Supabase CLI v3 zielt ohne `--remote` auf eine lokale Docker-Datenbank.
 - `pnpm exec supabase gen types typescript --linked > app/types/database.types.ts`
-  (das Supabase-Projekt ist bereits verlinkt)
+  (das Supabase-Projekt ist bereits verlinkt; die Datei ist vom Lint ausgenommen)
 
 Es gibt noch kein Test-Framework. Die CI (`.github/workflows/ci.yml`, Node 24) führt bei jedem
 Push `pnpm lint` und `pnpm typecheck` aus; beides muss grün sein.
 
+## Architektur
+- **Datenmodell:** `profiles` (1:1 zu `auth.users`, per Trigger angelegt), `clubs`,
+  `club_members` (Rolle als Enum `club_role`), `club_invites` (ein aktiver Link pro Club).
+- **RLS-Muster:** Policies nutzen die `security definer`-Funktionen `is_club_member(club_id)` und
+  `is_club_organizer(club_id)`, damit es keine Rekursion auf `club_members` gibt. Schreibvorgänge
+  über mehrere Tabellen oder ohne direkte Insert-Policy laufen über RPCs (`create_club`,
+  `join_club`, `regenerate_invite`; `get_invite` ist auch ohne Login aufrufbar).
+- **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für
+  fachlich änderbare Spalten gewährt (`grant update (col) ...`). Neue änderbare Spalten brauchen
+  in der Migration ein eigenes `grant update`, sonst schlägt das Update mit 42501 fehl.
+- **Fehlermeldungen:** `raise exception` in DB-Funktionen auf Deutsch formulieren; `errorMessage()`
+  (`app/utils/errors.ts`) gibt Meldungen mit Code P0001 direkt an die Oberfläche weiter.
+- **Composables:** Lesende Composables sind `async` und kapseln `await useAsyncData(...)`; Seiten
+  rufen sie mit `await` auf. Pro Fanclub-Seite liefert `useClub(id)` den Club samt eigener Rolle
+  (`null` = kein Mitglied).
+- **Login:** E-Mail-Code (`signInWithOtp` + `verifyOtp`) statt Magic Link, weil Links aus der
+  Mail im WhatsApp-In-App-Browser am PKCE-Flow scheitern. `/confirm` ist nur ein Fallback, falls
+  die E-Mail-Vorlage noch einen Link enthält. `onboarding.global.ts` erzwingt einen Anzeigenamen.
+- **Mailversand:** Die Auth-Mails laufen über eigenes SMTP (Strato, Subdomain), eingetragen im
+  Supabase-Dashboard. Ohne eigenes SMTP sind im Free-Plan die Vorlagen gesperrt, und der
+  eingebaute Versand stellt nur an Team-Mitglieder zu. Die Vorlagen „Magic Link“ und „Confirm
+  signup“ müssen `{{ .Token }}` enthalten.
+
 ## Technische Stolperfallen
-- **Stand:** Das Repo ist noch das unveränderte Nuxt-UI-Starter-Template. `app/app.vue`
-  (Header/Footer, SEO-Meta, `lang: 'en'`), `app/pages/index.vue`, `AppLogo.vue` und
-  `TemplateMenu.vue` sind Platzhalter und werden ersetzt. `app/composables/`, `server/`,
-  `supabase/migrations/` und `app/types/database.types.ts` existieren noch nicht.
-- **Auth-Redirect:** `nuxt.config.ts` hat noch keinen `supabase`-Block, daher gelten die
-  Modul-Defaults: `redirect: true` leitet jede Route ohne Session auf `/login` um, Callback ist
-  `/confirm`. Öffentliche Seiten (z. B. Einladungslinks aus WhatsApp) müssen unter
-  `supabase.redirectOptions.exclude` eingetragen werden.
+- **Auth-Redirect:** `redirect: true` (Modul-Default) leitet jede Route ohne Session auf
+  `/login` um. Öffentliche Seiten in `nuxt.config.ts` unter `supabase.redirectOptions.exclude`
+  eintragen (aktuell `/join/*`). `saveRedirectToCookie` merkt sich das Ziel; auf
+  ausgenommenen Seiten den Cookie vor dem Login selbst setzen (`useSupabaseCookieRedirect`).
 - **`useSupabaseUser()`** (`@nuxtjs/supabase` v2) liefert die JWT-Claims aus
-  `auth.getClaims()`, kein `User`-Objekt: Die User-ID ist `user.value?.sub`, nicht `.id`.
+  `auth.getClaims()`, kein `User`-Objekt: Die User-ID ist `.sub`, nicht `.id`. Im Code
+  `useCurrentUserId()` verwenden. Nach einem Login setzt das Modul den User erst asynchron,
+  deshalb vor der Weiterleitung `useSyncSupabaseUser()` aufrufen. `useSupabaseSession()` hat
+  keine `user`-Eigenschaft.
+- **Imports:** `@supabase/supabase-js` ist keine direkte Abhängigkeit und mit pnpm nicht
+  importierbar, auch nicht nur für Typen.
 - **Typen:** Das Modul lädt `~/types/database.types.ts` automatisch, sobald die Datei existiert;
   danach sind `useSupabaseClient()` und die Server-Helfer typisiert. Nach jeder Migration
   die Typen neu generieren.

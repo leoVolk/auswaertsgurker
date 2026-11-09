@@ -12,10 +12,6 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  routeRules: {
-    '/': { prerender: true }
-  },
-
   compatibilityDate: '2026-06-30',
 
   eslint: {
@@ -24,6 +20,17 @@ export default defineNuxtConfig({
         commaDangle: 'never',
         braceStyle: '1tbs'
       }
+    }
+  },
+
+  supabase: {
+    redirectOptions: {
+      login: '/login',
+      callback: '/confirm',
+      // Einladungslinks müssen ohne Login erreichbar sein
+      exclude: ['/join/*'],
+      // Nach dem Login zur ursprünglich aufgerufenen Seite zurückkehren
+      saveRedirectToCookie: true
     }
   }
 })
