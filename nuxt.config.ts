@@ -12,6 +12,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  runtimeConfig: {
+    // Nur serverseitig, gesetzt über NUXT_CRON_SECRET; schützt /api/cron/*.
+    // Auf Vercel denselben Wert zusätzlich als CRON_SECRET hinterlegen, damit Vercel ihn mitsendet.
+    cronSecret: ''
+  },
+
   compatibilityDate: '2026-06-30',
 
   eslint: {

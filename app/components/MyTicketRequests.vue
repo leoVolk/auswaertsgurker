@@ -7,6 +7,8 @@ const props = defineProps<{
   categories: TicketCategory[]
   membershipNumberRequired: boolean
   downloadRequiresPayment: boolean
+  /** Ticketdaten nach Ablauf der Löschfrist entfernt */
+  purged: boolean
 }>()
 
 function paymentBadge(request: TicketRequest) {
@@ -124,7 +126,7 @@ async function onCancel() {
       </div>
 
       <TicketDeliveryInfo
-        v-if="request.status === 'allocated'"
+        v-if="request.status === 'allocated' && !purged"
         :request="request"
         :download-requires-payment="downloadRequiresPayment"
       />

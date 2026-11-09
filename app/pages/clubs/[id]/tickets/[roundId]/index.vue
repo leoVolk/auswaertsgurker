@@ -188,6 +188,15 @@ async function onDelete() {
       />
     </UCard>
 
+    <UAlert
+      v-if="round.personalDataPurged"
+      color="neutral"
+      variant="subtle"
+      icon="i-lucide-shield-check"
+      title="Ticketdaten gelöscht"
+      :description="`Mitgliedsnummern und Ticket-PDFs wurden ${TICKET_DATA_RETENTION_DAYS} Tage nach dem Spiel automatisch gelöscht.`"
+    />
+
     <UCard
       title="Ticket anfragen"
       :ui="{ body: 'space-y-4' }"
@@ -232,6 +241,7 @@ async function onDelete() {
         :categories="round.categories"
         :membership-number-required="round.membershipNumberRequired"
         :download-requires-payment="round.downloadRequiresPayment"
+        :purged="round.personalDataPurged"
         @changed="refreshRequests"
       />
 

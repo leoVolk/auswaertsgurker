@@ -33,6 +33,8 @@ export interface TicketRound {
   downloadRequiresPayment: boolean
   notes: string | null
   closedAt: string | null
+  /** Mitgliedsnummern und PDFs nach Ablauf der Löschfrist entfernt */
+  personalDataPurged: boolean
   awayGame: {
     matchId: number
     matchday: number
@@ -141,7 +143,7 @@ export async function useTicketRound(roundId: MaybeRefOrGetter<string>) {
         .select(`
           id, club_id, request_deadline, max_tickets_per_member, membership_number_required,
           download_requires_payment, notes, closed_at,
-          away_game:away_games!inner(openligadb_match_id, matchday, opponent_name, kickoff_at),
+          away_game:away_games!inner(openligadb_match_id, matchday, opponent_name, kickoff_at, personal_data_purged_at),
           categories:ticket_categories(id, name, price_cents, quota, sort_order)
         `)
         .eq('id', id)
@@ -158,6 +160,7 @@ export async function useTicketRound(roundId: MaybeRefOrGetter<string>) {
         downloadRequiresPayment: data.download_requires_payment,
         notes: data.notes,
         closedAt: data.closed_at,
+        personalDataPurged: data.away_game.personal_data_purged_at !== null,
         awayGame: {
           matchId: data.away_game.openligadb_match_id,
           matchday: data.away_game.matchday,
@@ -378,7 +381,6 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
 // Hinterlegung
 // ---------------------------------------------------------------------------
 
-export const TICKET_FILES_BUCKET = 'ticket-files'
 export const TICKET_FILE_MAX_BYTES = 5 * 1024 * 1024
 
 export const TICKET_DELIVERY: Record<TicketDeliveryMethod, { label: string, icon: string }> = {

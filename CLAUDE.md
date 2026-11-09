@@ -97,8 +97,16 @@ Schema auf Sicherheitsprobleme.
   Ticket. Link-Format: `paypal.me/<Name>/<Betrag>EUR` mit Punkt als Dezimaltrenner
   (`app/utils/paypal.ts`). `ticket_rounds.download_requires_payment` sperrt das PDF bis zur
   Bestätigung (Storage-Policy).
-- **Offen – Löschfrist:** Mitgliedsnummern und Ticket-PDFs 30 Tage nach dem Spiel löschen. Braucht
-  einen Server-Job mit `NUXT_SUPABASE_SECRET_KEY` und täglichem Cron; kommt mit dem Deployment.
+- **Löschfrist:** `server/api/cron/cleanup.get.ts` (täglich per Vercel Cron, `vercel.json`, geschützt
+  mit `runtimeConfig.cronSecret` = `NUXT_CRON_SECRET`, Vercel sendet `CRON_SECRET` als Bearer-Token).
+  `server/utils/retention.ts` prüft per OpenLigaDB, welche Spiele beendet und älter als
+  `TICKET_DATA_RETENTION_DAYS` sind, löscht deren PDFs über die Storage-API (Service Role) und ruft
+  dann `purge_away_game_ticket_data` auf (nur `service_role`; markiert
+  `away_games.personal_data_purged_at`). Reihenfolge Dateien → DB, damit ein abgebrochener Lauf
+  am nächsten Tag einfach wiederholt wird.
+- **Deployment:** Vercel, Schritte und Umgebungsvariablen in `README.md`, Vorlage in `.env.example`.
+- **Node-Typen:** `@types/node` ist nicht installiert; in `nuxt.config.ts` und Server-Code kein
+  `process`, `Buffer` oder `node:*` verwenden (Konfiguration über `runtimeConfig` + `NUXT_*`-Variablen).
 - **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für
   fachlich änderbare Spalten gewährt (`grant update (col) ...`). Neue änderbare Spalten brauchen
   in der Migration ein eigenes `grant update`, sonst schlägt das Update mit 42501 fehl.

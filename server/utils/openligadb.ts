@@ -42,6 +42,20 @@ const fetchLeagueTeams = defineCachedFunction(
   }
 )
 
+export interface MatchResult {
+  kickoffAt: string
+  isFinished: boolean
+}
+
+/** Anstoß und Spielstand (beendet ja/nein) aller Spiele einer Saison, nach Spiel-ID */
+export async function getMatchResults(league: LeagueShortcut, season: number) {
+  const matches = await fetchSeasonMatches(league, season)
+  return new Map<number, MatchResult>(matches.map(match => [
+    match.matchID,
+    { kickoffAt: match.matchDateTimeUTC, isFinished: match.matchIsFinished }
+  ]))
+}
+
 export async function getLeagueTeams(league: LeagueShortcut, season: number): Promise<LeagueTeam[]> {
   const teams = await fetchLeagueTeams(league, season)
   return teams

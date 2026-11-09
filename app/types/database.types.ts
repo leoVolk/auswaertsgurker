@@ -49,6 +49,7 @@ export type Database = {
           matchday: number
           openligadb_match_id: number
           opponent_name: string
+          personal_data_purged_at: string | null
           season: number
         }
         Insert: {
@@ -60,6 +61,7 @@ export type Database = {
           matchday: number
           openligadb_match_id: number
           opponent_name: string
+          personal_data_purged_at?: string | null
           season: number
         }
         Update: {
@@ -71,6 +73,7 @@ export type Database = {
           matchday?: number
           openligadb_match_id?: number
           opponent_name?: string
+          personal_data_purged_at?: string | null
           season?: number
         }
         Relationships: [
@@ -610,6 +613,10 @@ export type Database = {
       is_club_organizer: { Args: { p_club_id: string }; Returns: boolean }
       join_club: { Args: { p_token: string }; Returns: string }
       promote_trip_waitlist: { Args: { p_trip_id: string }; Returns: undefined }
+      purge_away_game_ticket_data: {
+        Args: { p_away_game_id: string; p_kickoff_at: string }
+        Returns: number
+      }
       regenerate_invite: { Args: { p_club_id: string }; Returns: string }
       register_for_trip: {
         Args: { p_trip_id: string }
