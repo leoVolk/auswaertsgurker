@@ -64,10 +64,16 @@ Schema auf Sicherheitsprobleme.
   `AwayMatch`); Import per `#shared/...`.
 - **Zeiten:** Ein- und Ausgabe in Europe/Berlin über `app/utils/datetime.ts`
   (`formatDateTime`, `toBerlinInput`/`fromBerlinInput` für `<UInput type="datetime-local">`).
-- **RLS-Muster:** Policies nutzen die `security definer`-Funktionen `is_club_member(club_id)` und
-  `is_club_organizer(club_id)`, damit es keine Rekursion auf `club_members` gibt. Schreibvorgänge
-  über mehrere Tabellen oder ohne direkte Insert-Policy laufen über RPCs (`create_club`,
-  `join_club`, `regenerate_invite`; `get_invite` ist auch ohne Login aufrufbar).
+- **RLS-Muster:** Policies nutzen die `security definer`-Funktionen `private.is_club_member(club_id)`
+  und `private.is_club_organizer(club_id)`, damit es keine Rekursion auf `club_members` gibt.
+  Schreibvorgänge über mehrere Tabellen oder ohne direkte Insert-Policy laufen über RPCs
+  (`create_club`, `join_club`, `regenerate_invite`; `get_invite` ist auch ohne Login aufrufbar).
+- **Schemas:** `public` ist das API-Schema; jede Funktion dort ist per RPC erreichbar. Nur bewusst
+  aufrufbare RPCs (prüfen Rechte selbst) gehören nach `public`. Rechte-Prüfungen für Policies und
+  interne Helfer liegen in `private` (nicht exponiert; `authenticated` hat nur USAGE) und werden
+  voll qualifiziert aufgerufen (`private.is_club_organizer(…)`). Trigger-Funktionen bleiben in
+  `public` (über die API nicht aufrufbar). Der Security-Advisor meldet die RPCs in `public`
+  absichtlich weiterhin.
 - **Anmeldungen:** Statuswechsel nur über RPCs (`register_for_trip`, `cancel_trip_registration`,
   `confirm_trip_registration`, `confirm_all_trip_registrations`), die die Fahrt per `for update`
   sperren. Nachrücken zentral in `promote_trip_waitlist` (auch per Trigger bei mehr Plätzen und beim

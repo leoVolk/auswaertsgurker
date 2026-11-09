@@ -35,7 +35,7 @@ begin
   values (game, club, 999999, 'bl1', 2026, 7, 'Testgegner');
 
   -- 0) Datumsformat
-  label := public.format_berlin_datetime('2026-11-21 14:30:00+00');
+  label := private.format_berlin_datetime('2026-11-21 14:30:00+00');
   if label <> 'Sa., 21.11., 15:30 Uhr' then raise exception '0: %', label; end if;
 
   set local role authenticated;

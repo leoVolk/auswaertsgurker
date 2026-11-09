@@ -130,7 +130,7 @@ begin
   if n <> 0 then raise exception '9: Datei nach Stornierung für Inhaber sichtbar'; end if;
 
   -- 10) Ungültige Pfade führen nicht zu Fehlern
-  if public.can_read_ticket_file('foo/bar.pdf') or public.can_read_ticket_file('../' || path1) then
+  if private.can_read_ticket_file('foo/bar.pdf') or private.can_read_ticket_file('../' || path1) then
     raise exception '10: Ungültiger Pfad lesbar';
   end if;
 

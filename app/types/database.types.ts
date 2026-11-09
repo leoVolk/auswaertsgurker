@@ -660,9 +660,6 @@ export type Database = {
           waitlisted: number
         }[]
       }
-      can_delete_ticket_file: { Args: { p_name: string }; Returns: boolean }
-      can_read_ticket_file: { Args: { p_name: string }; Returns: boolean }
-      can_upload_ticket_file: { Args: { p_name: string }; Returns: boolean }
       cancel_ticket_request: {
         Args: { p_request_id: string }
         Returns: undefined
@@ -723,17 +720,6 @@ export type Database = {
         Returns: undefined
       }
       detach_ticket_file: { Args: { p_request_id: string }; Returns: string }
-      enqueue_notifications: {
-        Args: {
-          p_body: string
-          p_club_id: string
-          p_kind: Database["public"]["Enums"]["notification_kind"]
-          p_title: string
-          p_url: string
-          p_user_ids: string[]
-        }
-        Returns: undefined
-      }
       ensure_away_game: {
         Args: {
           p_club_id: string
@@ -746,7 +732,6 @@ export type Database = {
         }
         Returns: string
       }
-      format_berlin_datetime: { Args: { p_ts: string }; Returns: string }
       get_invite: {
         Args: { p_token: string }
         Returns: {
@@ -767,8 +752,6 @@ export type Database = {
           waitlist_count: number
         }[]
       }
-      is_club_member: { Args: { p_club_id: string }; Returns: boolean }
-      is_club_organizer: { Args: { p_club_id: string }; Returns: boolean }
       join_club: { Args: { p_token: string }; Returns: string }
       notification_recipients: {
         Args: { p_user_ids: string[] }
@@ -779,7 +762,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      promote_trip_waitlist: { Args: { p_trip_id: string }; Returns: undefined }
       purge_away_game_ticket_data: {
         Args: { p_away_game_id: string; p_kickoff_at: string }
         Returns: number
@@ -836,23 +818,6 @@ export type Database = {
           p_status: Database["public"]["Enums"]["ticket_status"]
         }
         Returns: undefined
-      }
-      shares_club_with: { Args: { p_user_id: string }; Returns: boolean }
-      ticket_file_path: {
-        Args: { p_club_id: string; p_request_id: string }
-        Returns: string
-      }
-      ticket_file_request_id: { Args: { p_name: string }; Returns: string }
-      ticket_round_is_open: {
-        Args: { p_round: Database["public"]["Tables"]["ticket_rounds"]["Row"] }
-        Returns: boolean
-      }
-      trip_display_label: {
-        Args: {
-          p_title: string
-          p_transport: Database["public"]["Enums"]["transport_mode"]
-        }
-        Returns: string
       }
       update_ticket_request_holder: {
         Args: {
