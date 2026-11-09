@@ -6,7 +6,19 @@ const props = defineProps<{
   requests: TicketRequest[]
   categories: TicketCategory[]
   membershipNumberRequired: boolean
+  downloadRequiresPayment: boolean
 }>()
+
+function paymentBadge(request: TicketRequest) {
+  if (request.status === 'allocated') {
+    return (categoryById.value.get(request.categoryId)?.priceCents ?? 0) > 0
+      ? PAYMENT_STATUS[request.paymentStatus]
+      : null
+  }
+  return request.paymentStatus === 'confirmed'
+    ? { label: 'Wird erstattet', color: 'info' as const }
+    : null
+}
 
 const emit = defineEmits<{ changed: [] }>()
 
@@ -81,6 +93,14 @@ async function onCancel() {
             {{ categoryLabel(request) }}
             <template v-if="request.holderMembershipNumber"> · Nr. {{ request.holderMembershipNumber }}</template>
           </span>
+          <UBadge
+            v-if="paymentBadge(request)"
+            :label="paymentBadge(request)?.label"
+            :color="paymentBadge(request)?.color"
+            variant="outline"
+            size="sm"
+            class="mt-1"
+          />
         </span>
         <UBadge
           :label="TICKET_STATUS[request.status].label"
@@ -106,6 +126,7 @@ async function onCancel() {
       <TicketDeliveryInfo
         v-if="request.status === 'allocated'"
         :request="request"
+        :download-requires-payment="downloadRequiresPayment"
       />
     </li>
   </ul>

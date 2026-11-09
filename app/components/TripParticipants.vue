@@ -1,16 +1,67 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import type { PaymentStatus } from '~/composables/usePayments'
 import type { RegistrationStatus, TripParticipant } from '~/composables/useTripRegistrations'
 
 const props = defineProps<{
   tripId: string
   capacity: number | null
+  priceCents: number | null
 }>()
 
 const emit = defineEmits<{ changed: [] }>()
 
 const { participants, refresh } = await useTripParticipants(() => props.tripId)
 const { cancel, confirm, confirmAll } = useTripRegistrationActions()
+const { setPaymentStatus } = usePaymentActions()
+
+const hasPrice = computed(() => (props.priceCents ?? 0) > 0)
+const isSeated = (p: TripParticipant) => p.status === 'requested' || p.status === 'confirmed'
+
+// Zahlungsstand der Personen mit Platz
+const payment = computed(() => {
+  const seated = participants.value.filter(isSeated)
+  const count = (status: PaymentStatus) => seated.filter(p => p.paymentStatus === status).length
+  return {
+    confirmed: count('confirmed'),
+    reported: count('reported'),
+    open: count('open'),
+    reportedIds: seated.filter(p => p.paymentStatus === 'reported').map(p => p.id)
+  }
+})
+
+/** Badge zur Zahlung; bei Abgesagten mit bestätigter Zahlung ein Hinweis zur Erstattung */
+function paymentBadge(participant: TripParticipant) {
+  if (!isSeated(participant)) {
+    return participant.paymentStatus === 'confirmed'
+      ? { label: 'Erstattung offen', color: 'warning' as const }
+      : null
+  }
+  return hasPrice.value ? PAYMENT_STATUS[participant.paymentStatus] : null
+}
+
+async function onSetPayment(participant: TripParticipant, status: Exclude<PaymentStatus, 'reported'>) {
+  try {
+    await setPaymentStatus(status, { tripRegistrationIds: [participant.id] })
+    await afterChange()
+  } catch (error) {
+    showError(error)
+  }
+}
+
+async function onConfirmReported() {
+  try {
+    const count = await setPaymentStatus('confirmed', { tripRegistrationIds: payment.value.reportedIds })
+    await afterChange()
+    toast.add({
+      title: count === 1 ? '1 Zahlung bestätigt' : `${count} Zahlungen bestätigt`,
+      color: 'success',
+      icon: 'i-lucide-check'
+    })
+  } catch (error) {
+    showError(error)
+  }
+}
 const toast = useToast()
 const showError = useErrorToast()
 
@@ -93,10 +144,17 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
     }
   }
 
-  if (participant.status === 'requested') {
-    return [[{ label: 'Bestätigen', icon: 'i-lucide-check', onSelect: () => onConfirm(participant) }], [cancelAction]]
+  const paymentItems = hasPrice.value || participant.paymentStatus !== 'open'
+    ? paymentMenuItems(participant.paymentStatus, status => onSetPayment(participant, status))
+    : []
+
+  if (participant.status === 'cancelled') {
+    return paymentItems.length ? [paymentItems] : []
   }
-  return [[cancelAction]]
+  if (participant.status === 'requested') {
+    return [[{ label: 'Bestätigen', icon: 'i-lucide-check', onSelect: () => onConfirm(participant) }], paymentItems, [cancelAction]]
+  }
+  return [paymentItems, [cancelAction]]
 }
 </script>
 
@@ -117,6 +175,24 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
         />
       </div>
     </template>
+
+    <div
+      v-if="hasPrice && (payment.confirmed || payment.reported || payment.open)"
+      class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-elevated/50 px-3 py-2 text-sm"
+    >
+      <span class="text-muted">
+        Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
+      </span>
+      <UButton
+        v-if="payment.reported"
+        :label="`Gemeldete bestätigen (${payment.reported})`"
+        icon="i-lucide-badge-check"
+        size="xs"
+        variant="soft"
+        loading-auto
+        @click="onConfirmReported"
+      />
+    </div>
 
     <UAlert
       v-if="isOverbooked"
@@ -154,16 +230,26 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
           v-for="(participant, index) in group.items"
           :key="participant.id"
           class="flex items-center justify-between gap-3 px-3 py-2"
-          :class="{ 'opacity-60': group.status === 'cancelled' }"
+          :class="{ 'opacity-60': group.status === 'cancelled' && participant.paymentStatus !== 'confirmed' }"
         >
           <UUser
             :name="group.status === 'waitlist' ? `${index + 1}. ${participant.displayName}` : participant.displayName"
             :avatar="{ alt: participant.displayName }"
             size="sm"
+            class="min-w-0 flex-1"
+          />
+
+          <UBadge
+            v-if="paymentBadge(participant)"
+            :label="paymentBadge(participant)?.label"
+            :color="paymentBadge(participant)?.color"
+            variant="subtle"
+            size="sm"
+            class="shrink-0"
           />
 
           <UDropdownMenu
-            v-if="group.status !== 'cancelled'"
+            v-if="actions(participant).length"
             :items="actions(participant)"
             :content="{ align: 'end' }"
           >

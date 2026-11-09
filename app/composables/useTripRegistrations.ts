@@ -1,5 +1,6 @@
 import type { BadgeProps } from '@nuxt/ui'
 import type { Enums } from '~/types/database.types'
+import type { PaymentStatus } from './usePayments'
 
 export type RegistrationStatus = Enums<'registration_status'>
 
@@ -16,6 +17,7 @@ export interface TripStats {
   myRegistrationId: string | null
   myStatus: RegistrationStatus | null
   myWaitlistPosition: number | null
+  myPaymentStatus: PaymentStatus | null
 }
 
 export interface TripParticipant {
@@ -23,6 +25,7 @@ export interface TripParticipant {
   userId: string
   displayName: string
   status: RegistrationStatus
+  paymentStatus: PaymentStatus
 }
 
 /** Belegung aller Fahrten eines Fanclubs und der eigene Anmeldestatus. */
@@ -46,7 +49,8 @@ export async function useTripStats(clubId: MaybeRefOrGetter<string>) {
           waitlistCount: row.waitlist_count,
           myRegistrationId: row.my_registration_id ?? null,
           myStatus: row.my_status ?? null,
-          myWaitlistPosition: row.my_waitlist_position ?? null
+          myWaitlistPosition: row.my_waitlist_position ?? null,
+          myPaymentStatus: row.my_payment_status ?? null
         })
       }
       return map
@@ -69,7 +73,7 @@ export async function useTripParticipants(tripId: MaybeRefOrGetter<string>) {
 
       const { data, error } = await supabase
         .from('trip_registrations')
-        .select('id, user_id, status, profile:profiles!inner(display_name)')
+        .select('id, user_id, status, payment_status, profile:profiles!inner(display_name)')
         .eq('trip_id', id)
         // Reihenfolge der Warteliste
         .order('status_changed_at')
@@ -80,7 +84,8 @@ export async function useTripParticipants(tripId: MaybeRefOrGetter<string>) {
         id: r.id,
         userId: r.user_id,
         displayName: r.profile.display_name ?? 'Ohne Namen',
-        status: r.status
+        status: r.status,
+        paymentStatus: r.payment_status
       }))
     },
     { default: () => [] }

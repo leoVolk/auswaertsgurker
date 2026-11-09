@@ -5,11 +5,14 @@ import type { TripDetail } from '~/composables/useTrips'
 const props = defineProps<{
   trip: TripDetail
   stats?: TripStats
+  paypalMe: string | null
 }>()
 
 const emit = defineEmits<{ changed: [] }>()
 
 const { register, cancel } = useTripRegistrationActions()
+const { reportPayment } = usePaymentActions()
+const { profile } = useProfile()
 const toast = useToast()
 const showError = useErrorToast()
 
@@ -19,6 +22,24 @@ const isFull = computed(() =>
   props.trip.capacity !== null && (props.stats?.takenSeats ?? 0) >= props.trip.capacity
 )
 const closedReason = computed(() => registrationClosedReason(props.trip))
+
+// Bezahlen, sobald man einen Platz hat (angefragt oder bestätigt) und die Fahrt etwas kostet
+const showPayment = computed(() =>
+  (status.value === 'requested' || status.value === 'confirmed') && (props.trip.priceCents ?? 0) > 0
+)
+const reference = computed(() => paymentReference({
+  what: tripLabel(props.trip),
+  matchday: props.trip.awayGame.matchday,
+  opponentName: props.trip.awayGame.opponentName,
+  payerName: profile.value?.display_name ?? ''
+}))
+
+async function onReportPayment() {
+  const registrationId = props.stats?.myRegistrationId
+  if (!registrationId) return
+  await reportPayment({ tripRegistrationIds: [registrationId] })
+  emit('changed')
+}
 
 async function onRegister() {
   try {
@@ -92,6 +113,19 @@ async function onCancel() {
       description="Wird ein Platz frei, rückst du automatisch nach."
     />
 
+    <template v-if="showPayment">
+      <USeparator />
+      <PaymentBox
+        label="Fahrtkosten"
+        :amount-cents="trip.priceCents ?? 0"
+        :reference="reference"
+        :paypal-me="paypalMe"
+        :status="stats?.myPaymentStatus ?? 'open'"
+        :report="onReportPayment"
+      />
+      <USeparator />
+    </template>
+
     <template v-if="!isActive">
       <p
         v-if="status === 'cancelled'"
@@ -99,6 +133,14 @@ async function onCancel() {
       >
         Du hast für diese Fahrt abgesagt.
       </p>
+      <UAlert
+        v-if="stats?.myPaymentStatus === 'confirmed'"
+        color="info"
+        variant="subtle"
+        icon="i-lucide-undo-2"
+        title="Du hast schon bezahlt."
+        description="Die Organisatoren erstatten dir die Fahrtkosten."
+      />
 
       <UAlert
         v-if="closedReason"

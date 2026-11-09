@@ -88,6 +88,15 @@ Schema auf Sicherheitsprobleme.
   Ablauf: Upload per Storage-API → `attach_ticket_file`; Lösen per `detach_ticket_file` bzw.
   `set_ticket_delivery`, die zurückgegebenen Pfade löscht der Client aus dem Storage.
   Downloads nur über kurzlebige signierte URLs. Storage-Dateien nie per SQL löschen.
+- **Zahlungen:** `payment_status` an `trip_registrations` und `ticket_requests`, PayPal.Me-Name in
+  `clubs.paypal_me`. Mitglieder melden per `report_payment(p_trip_registration_ids,
+  p_ticket_request_ids)` (nur eigene, bezahlbare Posten: Fahrt mit Platz, zugeteiltes Ticket);
+  Organisatoren per `set_payment_status` (bestätigen, auch bar; offen; erstatten nur bestätigte).
+  Der Betrag wird beim Melden/Bestätigen in `payment_amount_cents` festgehalten. Mehrere Tickets
+  einer Person werden gemeinsam bezahlt (ein Link, ein Verwendungszweck), der Status bleibt pro
+  Ticket. Link-Format: `paypal.me/<Name>/<Betrag>EUR` mit Punkt als Dezimaltrenner
+  (`app/utils/paypal.ts`). `ticket_rounds.download_requires_payment` sperrt das PDF bis zur
+  Bestätigung (Storage-Policy).
 - **Offen – Löschfrist:** Mitgliedsnummern und Ticket-PDFs 30 Tage nach dem Spiel löschen. Braucht
   einen Server-Job mit `NUXT_SUPABASE_SECRET_KEY` und täglichem Cron; kommt mit dem Deployment.
 - **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für

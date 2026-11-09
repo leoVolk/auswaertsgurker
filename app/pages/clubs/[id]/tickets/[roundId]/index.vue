@@ -26,6 +26,31 @@ const remaining = computed(() =>
   round.value?.maxTicketsPerMember != null ? round.value.maxTicketsPerMember - myActiveCount.value : null
 )
 
+// Bezahlen: eine Zahlung für alle eigenen zugeteilten Tickets mit Preis
+const { reportPayment } = usePaymentActions()
+const priceOf = (categoryId: string) => round.value?.categories.find(c => c.id === categoryId)?.priceCents ?? 0
+const myPayable = computed(() => myRequests.value.filter(r => r.status === 'allocated' && priceOf(r.categoryId) > 0))
+const myPaymentStatus = computed(() => combinedPaymentStatus(myPayable.value.map(r => r.paymentStatus)))
+const myPaymentAmount = computed(() => {
+  const relevant = myPaymentStatus.value === 'open'
+    ? myPayable.value.filter(r => r.paymentStatus === 'open')
+    : myPayable.value
+  return relevant.reduce((sum, r) => sum + priceOf(r.categoryId), 0)
+})
+const myPaymentReference = computed(() => round.value
+  ? paymentReference({
+      what: myPayable.value.length === 1 ? 'Ticket' : `${myPayable.value.length} Tickets`,
+      matchday: round.value.awayGame.matchday,
+      opponentName: round.value.awayGame.opponentName,
+      payerName: profile.value?.display_name ?? ''
+    })
+  : '')
+
+async function onReportPayment() {
+  await reportPayment({ ticketRequestIds: myPayable.value.filter(r => r.paymentStatus === 'open').map(r => r.id) })
+  await refreshRequests()
+}
+
 useHead({ title: () => (round.value ? `Tickets bei ${round.value.awayGame.opponentName}` : 'Tickets') })
 
 async function refreshAll() {
@@ -200,13 +225,27 @@ async function onDelete() {
     <UCard
       v-if="myRequests.length"
       title="Deine Anfragen"
+      :ui="{ body: 'space-y-4' }"
     >
       <MyTicketRequests
         :requests="myRequests"
         :categories="round.categories"
         :membership-number-required="round.membershipNumberRequired"
+        :download-requires-payment="round.downloadRequiresPayment"
         @changed="refreshRequests"
       />
+
+      <template v-if="myPayable.length">
+        <USeparator />
+        <PaymentBox
+          :label="myPayable.length === 1 ? 'Für dein Ticket' : `Für deine ${myPayable.length} Tickets`"
+          :amount-cents="myPaymentAmount"
+          :reference="myPaymentReference"
+          :paypal-me="club.paypalMe"
+          :status="myPaymentStatus"
+          :report="onReportPayment"
+        />
+      </template>
     </UCard>
 
     <template v-if="isOrganizer">

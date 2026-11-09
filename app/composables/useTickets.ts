@@ -1,6 +1,7 @@
 import type { BadgeProps } from '@nuxt/ui'
 import type { AwayMatch } from '#shared/types/openligadb'
 import type { Enums } from '~/types/database.types'
+import type { PaymentStatus } from './usePayments'
 
 export type TicketStatus = Enums<'ticket_status'>
 export type TicketDeliveryMethod = Enums<'ticket_delivery_method'>
@@ -29,6 +30,7 @@ export interface TicketRound {
   requestDeadline: string | null
   maxTicketsPerMember: number | null
   membershipNumberRequired: boolean
+  downloadRequiresPayment: boolean
   notes: string | null
   closedAt: string | null
   awayGame: {
@@ -52,6 +54,7 @@ export interface TicketRequest {
   pickupLocation: string | null
   pickupAt: string | null
   ticketFilePath: string | null
+  paymentStatus: PaymentStatus
 }
 
 export interface TicketRoundSummary {
@@ -69,6 +72,7 @@ export interface TicketRoundInput {
   requestDeadline: string | null
   maxTicketsPerMember: number | null
   membershipNumberRequired: boolean
+  downloadRequiresPayment: boolean
   notes: string | null
   categories: { id?: string, name: string, priceCents: number, quota: number | null }[]
 }
@@ -135,7 +139,8 @@ export async function useTicketRound(roundId: MaybeRefOrGetter<string>) {
       const { data, error } = await supabase
         .from('ticket_rounds')
         .select(`
-          id, club_id, request_deadline, max_tickets_per_member, membership_number_required, notes, closed_at,
+          id, club_id, request_deadline, max_tickets_per_member, membership_number_required,
+          download_requires_payment, notes, closed_at,
           away_game:away_games!inner(openligadb_match_id, matchday, opponent_name, kickoff_at),
           categories:ticket_categories(id, name, price_cents, quota, sort_order)
         `)
@@ -150,6 +155,7 @@ export async function useTicketRound(roundId: MaybeRefOrGetter<string>) {
         requestDeadline: data.request_deadline,
         maxTicketsPerMember: data.max_tickets_per_member,
         membershipNumberRequired: data.membership_number_required,
+        downloadRequiresPayment: data.download_requires_payment,
         notes: data.notes,
         closedAt: data.closed_at,
         awayGame: {
@@ -182,7 +188,7 @@ export async function useTicketRequests(roundId: MaybeRefOrGetter<string>) {
         .from('ticket_requests')
         .select(`
           id, category_id, requested_by, holder_name, holder_membership_number, status,
-          delivery_method, pickup_location, pickup_at, ticket_file_path,
+          delivery_method, pickup_location, pickup_at, ticket_file_path, payment_status,
           requester:profiles!inner(display_name)
         `)
         .eq('round_id', id)
@@ -200,7 +206,8 @@ export async function useTicketRequests(roundId: MaybeRefOrGetter<string>) {
         deliveryMethod: r.delivery_method,
         pickupLocation: r.pickup_location,
         pickupAt: r.pickup_at,
-        ticketFilePath: r.ticket_file_path
+        ticketFilePath: r.ticket_file_path,
+        paymentStatus: r.payment_status
       }))
     },
     { default: () => [] }
@@ -279,6 +286,7 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
         request_deadline: input.requestDeadline,
         max_tickets_per_member: input.maxTicketsPerMember,
         membership_number_required: input.membershipNumberRequired,
+        download_requires_payment: input.downloadRequiresPayment,
         notes: input.notes
       })
       .select('id')
@@ -313,6 +321,7 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
         request_deadline: input.requestDeadline,
         max_tickets_per_member: input.maxTicketsPerMember,
         membership_number_required: input.membershipNumberRequired,
+        download_requires_payment: input.downloadRequiresPayment,
         notes: input.notes
       })
       .eq('id', roundId)

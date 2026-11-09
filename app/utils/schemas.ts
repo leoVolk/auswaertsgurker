@@ -29,7 +29,11 @@ export type ClubNameForm = z.output<typeof clubNameSchema>
 export const clubSettingsSchema = z.object({
   name: clubNameSchema.shape.name,
   league: z.enum(LEAGUE_SHORTCUTS, 'Bitte wähle eine Liga.'),
-  teamId: z.number('Bitte wähle euren Verein.')
+  teamId: z.number('Bitte wähle euren Verein.'),
+  // Name oder eingefügter Link; leer = kein PayPal-Link
+  paypalMe: z.string()
+    .transform(extractPaypalMeName)
+    .refine(name => name === '' || /^[A-Za-z0-9]{1,20}$/.test(name), 'Bitte gib den PayPal.Me-Namen ein (nur Buchstaben und Ziffern, z. B. MeinFanclub).')
 })
 export type ClubSettingsForm = z.output<typeof clubSettingsSchema>
 
@@ -63,6 +67,7 @@ export const ticketRoundFormSchema = z.object({
     .max(20, 'Höchstens 20 Tickets.')
     .nullish(),
   membershipNumberRequired: z.boolean(),
+  downloadRequiresPayment: z.boolean(),
   notes: z.string().trim().max(2000, 'Höchstens 2000 Zeichen.'),
   categories: z.array(z.object({
     id: z.string().optional(),

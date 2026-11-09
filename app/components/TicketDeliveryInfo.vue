@@ -4,7 +4,13 @@ import type { TicketRequest } from '~/composables/useTickets'
 // Wie ein Mitglied an sein zugeteiltes Ticket kommt
 const props = defineProps<{
   request: TicketRequest
+  /** PDF erst nach bestätigter Zahlung abrufbar */
+  downloadRequiresPayment: boolean
 }>()
+
+const downloadLocked = computed(() =>
+  props.downloadRequiresPayment && props.request.paymentStatus !== 'confirmed'
+)
 
 const openTicketFile = useOpenTicketFile()
 const showError = useErrorToast()
@@ -22,8 +28,18 @@ async function download() {
 <template>
   <div class="rounded-md bg-elevated/50 p-3 text-sm">
     <template v-if="request.deliveryMethod === 'digital'">
+      <p
+        v-if="request.ticketFilePath && downloadLocked"
+        class="flex gap-2 text-muted"
+      >
+        <UIcon
+          name="i-lucide-lock"
+          class="mt-0.5 size-4 shrink-0"
+        />
+        Dein Ticket liegt bereit. Du kannst es herunterladen, sobald deine Zahlung bestätigt ist.
+      </p>
       <UButton
-        v-if="request.ticketFilePath"
+        v-else-if="request.ticketFilePath"
         label="Ticket herunterladen (PDF)"
         icon="i-lucide-download"
         block

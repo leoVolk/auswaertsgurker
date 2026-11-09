@@ -168,6 +168,7 @@ export type Database = {
           id: string
           league_shortcut: string | null
           name: string
+          paypal_me: string | null
           team_id: number | null
           team_name: string | null
         }
@@ -177,6 +178,7 @@ export type Database = {
           id?: string
           league_shortcut?: string | null
           name: string
+          paypal_me?: string | null
           team_id?: number | null
           team_name?: string | null
         }
@@ -186,6 +188,7 @@ export type Database = {
           id?: string
           league_shortcut?: string | null
           name?: string
+          paypal_me?: string | null
           team_id?: number | null
           team_name?: string | null
         }
@@ -269,6 +272,9 @@ export type Database = {
           holder_membership_number: string | null
           holder_name: string
           id: string
+          payment_amount_cents: number | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          payment_status_changed_at: string | null
           pickup_at: string | null
           pickup_location: string | null
           requested_by: string
@@ -288,6 +294,9 @@ export type Database = {
           holder_membership_number?: string | null
           holder_name: string
           id?: string
+          payment_amount_cents?: number | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_status_changed_at?: string | null
           pickup_at?: string | null
           pickup_location?: string | null
           requested_by: string
@@ -307,6 +316,9 @@ export type Database = {
           holder_membership_number?: string | null
           holder_name?: string
           id?: string
+          payment_amount_cents?: number | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_status_changed_at?: string | null
           pickup_at?: string | null
           pickup_location?: string | null
           requested_by?: string
@@ -347,6 +359,7 @@ export type Database = {
           club_id: string
           created_at: string
           created_by: string | null
+          download_requires_payment: boolean
           id: string
           max_tickets_per_member: number | null
           membership_number_required: boolean
@@ -359,6 +372,7 @@ export type Database = {
           club_id: string
           created_at?: string
           created_by?: string | null
+          download_requires_payment?: boolean
           id?: string
           max_tickets_per_member?: number | null
           membership_number_required?: boolean
@@ -371,6 +385,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           created_by?: string | null
+          download_requires_payment?: boolean
           id?: string
           max_tickets_per_member?: number | null
           membership_number_required?: boolean
@@ -406,6 +421,9 @@ export type Database = {
           club_id: string
           created_at: string
           id: string
+          payment_amount_cents: number | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          payment_status_changed_at: string | null
           status: Database["public"]["Enums"]["registration_status"]
           status_changed_at: string
           trip_id: string
@@ -415,6 +433,9 @@ export type Database = {
           club_id: string
           created_at?: string
           id?: string
+          payment_amount_cents?: number | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_status_changed_at?: string | null
           status: Database["public"]["Enums"]["registration_status"]
           status_changed_at?: string
           trip_id: string
@@ -424,6 +445,9 @@ export type Database = {
           club_id?: string
           created_at?: string
           id?: string
+          payment_amount_cents?: number | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_status_changed_at?: string | null
           status?: Database["public"]["Enums"]["registration_status"]
           status_changed_at?: string
           trip_id?: string
@@ -573,6 +597,7 @@ export type Database = {
       get_trip_stats: {
         Args: { p_club_id: string }
         Returns: {
+          my_payment_status: Database["public"]["Enums"]["payment_status"]
           my_registration_id: string
           my_status: Database["public"]["Enums"]["registration_status"]
           my_waitlist_position: number
@@ -590,6 +615,13 @@ export type Database = {
         Args: { p_trip_id: string }
         Returns: Database["public"]["Enums"]["registration_status"]
       }
+      report_payment: {
+        Args: {
+          p_ticket_request_ids?: string[]
+          p_trip_registration_ids?: string[]
+        }
+        Returns: number
+      }
       request_ticket: {
         Args: {
           p_category_id: string
@@ -597,6 +629,14 @@ export type Database = {
           p_membership_number: string
         }
         Returns: string
+      }
+      set_payment_status: {
+        Args: {
+          p_status: Database["public"]["Enums"]["payment_status"]
+          p_ticket_request_ids?: string[]
+          p_trip_registration_ids?: string[]
+        }
+        Returns: number
       }
       set_ticket_delivery: {
         Args: {
@@ -635,6 +675,7 @@ export type Database = {
     }
     Enums: {
       club_role: "organizer" | "member"
+      payment_status: "open" | "reported" | "confirmed" | "refunded"
       registration_status: "requested" | "confirmed" | "waitlist" | "cancelled"
       ticket_delivery_method: "pickup" | "box_office" | "digital"
       ticket_status:
@@ -775,6 +816,7 @@ export const Constants = {
   public: {
     Enums: {
       club_role: ["organizer", "member"],
+      payment_status: ["open", "reported", "confirmed", "refunded"],
       registration_status: ["requested", "confirmed", "waitlist", "cancelled"],
       ticket_delivery_method: ["pickup", "box_office", "digital"],
       ticket_status: [

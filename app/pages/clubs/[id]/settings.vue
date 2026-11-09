@@ -11,10 +11,17 @@ const { club, isOrganizer, refresh } = await useClub(clubId)
 
 useHead({ title: 'Einstellungen' })
 
-const state = reactive<{ name: string, league: LeagueShortcut, teamId: number | undefined }>({
+const state = reactive<{ name: string, league: LeagueShortcut, teamId: number | undefined, paypalMe: string }>({
   name: club.value?.name ?? '',
   league: club.value?.team?.league ?? 'bl1',
-  teamId: club.value?.team?.teamId
+  teamId: club.value?.team?.teamId,
+  paypalMe: club.value?.paypalMe ?? ''
+})
+
+// Vorschau des Links, wie Mitglieder ihn sehen
+const paypalPreview = computed(() => {
+  const name = extractPaypalMeName(state.paypalMe)
+  return /^[A-Za-z0-9]{1,20}$/.test(name) ? `https://paypal.me/${name}` : null
 })
 
 const leagueItems = LEAGUES.map(league => ({ label: league.label, value: league.value }))
@@ -34,7 +41,8 @@ async function onSubmit(event: FormSubmitEvent<ClubSettingsForm>) {
   try {
     await updateClub(clubId.value, {
       name: event.data.name,
-      team: { league: event.data.league, teamId: team.teamId, name: team.name }
+      team: { league: event.data.league, teamId: team.teamId, name: team.name },
+      paypalMe: event.data.paypalMe || null
     })
     await refresh()
     toast.add({ title: 'Einstellungen gespeichert', color: 'success', icon: 'i-lucide-check' })
@@ -109,6 +117,38 @@ async function onSubmit(event: FormSubmitEvent<ClubSettingsForm>) {
             size="lg"
             class="w-full"
           />
+        </UFormField>
+
+        <UFormField
+          name="paypalMe"
+          label="PayPal.Me-Name"
+          hint="Optional"
+          help="Darüber bezahlen Mitglieder Fahrtkosten und Tickets. Du kannst auch den ganzen Link einfügen."
+        >
+          <UFieldGroup
+            size="lg"
+            class="w-full"
+          >
+            <UBadge
+              label="paypal.me/"
+              color="neutral"
+              variant="outline"
+            />
+            <UInput
+              v-model="state.paypalMe"
+              placeholder="MeinFanclub"
+              autocomplete="off"
+              class="w-full"
+            />
+          </UFieldGroup>
+          <ULink
+            v-if="paypalPreview"
+            :to="paypalPreview"
+            target="_blank"
+            class="mt-1.5 inline-block text-sm text-primary underline"
+          >
+            Link testen
+          </ULink>
         </UFormField>
 
         <UButton

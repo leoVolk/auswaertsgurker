@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import type { PaymentStatus } from '~/composables/usePayments'
 import type { TicketCategory, TicketRequest, TicketRound, TicketStatus } from '~/composables/useTickets'
 
 const props = defineProps<{
@@ -16,6 +17,41 @@ const toast = useToast()
 const showError = useErrorToast()
 
 const allocatedRequests = computed(() => props.requests.filter(r => r.status === 'allocated'))
+
+// Zahlungen
+const { setPaymentStatus } = usePaymentActions()
+const priceOf = (categoryId: string) => props.round.categories.find(c => c.id === categoryId)?.priceCents ?? 0
+const payableRequests = computed(() => allocatedRequests.value.filter(r => priceOf(r.categoryId) > 0))
+const payment = computed(() => {
+  const count = (status: PaymentStatus) => payableRequests.value.filter(r => r.paymentStatus === status).length
+  return {
+    confirmed: count('confirmed'),
+    reported: count('reported'),
+    open: count('open'),
+    reportedIds: payableRequests.value.filter(r => r.paymentStatus === 'reported').map(r => r.id)
+  }
+})
+
+/** Badge zur Zahlung; bei nicht mehr zugeteilten, aber bezahlten Tickets ein Hinweis zur Erstattung */
+function paymentBadge(request: TicketRequest) {
+  if (request.status !== 'allocated') {
+    return request.paymentStatus === 'confirmed'
+      ? { label: 'Erstattung offen', color: 'warning' as const }
+      : null
+  }
+  return priceOf(request.categoryId) > 0 ? PAYMENT_STATUS[request.paymentStatus] : null
+}
+
+async function onSetPayment(request: TicketRequest, status: Exclude<PaymentStatus, 'reported'>) {
+  await run(() => setPaymentStatus(status, { ticketRequestIds: [request.id] }), `Zahlung von ${request.holderName} aktualisiert`)
+}
+
+async function onConfirmReported() {
+  await run(
+    () => setPaymentStatus('confirmed', { ticketRequestIds: payment.value.reportedIds }),
+    payment.value.reportedIds.length === 1 ? '1 Zahlung bestätigt' : `${payment.value.reportedIds.length} Zahlungen bestätigt`
+  )
+}
 
 // Hinterlegung festlegen (einzeln oder für alle zugeteilten Tickets)
 const deliveryTargets = ref<TicketRequest[]>([])
@@ -161,6 +197,15 @@ async function onCancel() {
 }
 
 function actions(request: TicketRequest): DropdownMenuItem[][] {
+  const paymentItems = (request.status === 'allocated' && priceOf(request.categoryId) > 0) || request.paymentStatus !== 'open'
+    ? paymentMenuItems(request.paymentStatus, status => onSetPayment(request, status))
+    : []
+
+  // Stornierte: nur noch Zahlung (z. B. Erstattung) und PDF aufräumen
+  if (request.status === 'cancelled') {
+    return [paymentItems, ticketActions(request)].filter(group => group.length > 0)
+  }
+
   const statusActions: DropdownMenuItem[] = []
   if (request.status !== 'allocated') {
     statusActions.push({
@@ -186,6 +231,7 @@ function actions(request: TicketRequest): DropdownMenuItem[][] {
 
   return [
     statusActions,
+    paymentItems,
     ticketActions(request),
     [{
       label: 'Inhaber ändern',
@@ -264,6 +310,24 @@ async function copyAllocatedList() {
       </template>
     </div>
 
+    <div
+      v-if="payableRequests.length"
+      class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-elevated/50 px-3 py-2 text-sm"
+    >
+      <span class="text-muted">
+        Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
+      </span>
+      <UButton
+        v-if="payment.reported"
+        :label="`Gemeldete bestätigen (${payment.reported})`"
+        icon="i-lucide-badge-check"
+        size="xs"
+        variant="soft"
+        loading-auto
+        @click="onConfirmReported"
+      />
+    </div>
+
     <UCard
       v-for="category in categories"
       :key="category.id"
@@ -330,7 +394,7 @@ async function copyAllocatedList() {
             v-for="request in group.items"
             :key="request.id"
             class="flex items-center gap-3 px-3 py-2"
-            :class="{ 'opacity-60': group.status === 'cancelled' || group.status === 'rejected' }"
+            :class="{ 'opacity-60': (group.status === 'cancelled' || group.status === 'rejected') && request.paymentStatus !== 'confirmed' }"
           >
             <span class="min-w-0 flex-1">
               <span class="block truncate font-medium text-highlighted">{{ request.holderName }}</span>
@@ -350,9 +414,17 @@ async function copyAllocatedList() {
                 />
                 <span class="truncate">{{ deliveryLine(request)?.text }}</span>
               </span>
+              <UBadge
+                v-if="paymentBadge(request)"
+                :label="paymentBadge(request)?.label"
+                :color="paymentBadge(request)?.color"
+                variant="outline"
+                size="sm"
+                class="mt-1"
+              />
             </span>
             <UDropdownMenu
-              v-if="group.status !== 'cancelled'"
+              v-if="actions(request).length"
               :items="actions(request)"
               :content="{ align: 'end' }"
             >

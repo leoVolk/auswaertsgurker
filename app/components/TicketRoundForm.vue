@@ -19,6 +19,7 @@ const state = reactive({
   requestDeadline: toBerlinInput(props.initial?.requestDeadline),
   maxTicketsPerMember: props.initial?.maxTicketsPerMember ?? null,
   membershipNumberRequired: props.initial?.membershipNumberRequired ?? false,
+  downloadRequiresPayment: props.initial?.downloadRequiresPayment ?? false,
   notes: props.initial?.notes ?? '',
   categories: (props.initial?.categories.map(category => ({
     id: category.id,
@@ -42,6 +43,7 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
     requestDeadline: data.requestDeadline ? fromBerlinInput(data.requestDeadline) : null,
     maxTicketsPerMember: data.maxTicketsPerMember ?? null,
     membershipNumberRequired: data.membershipNumberRequired,
+    downloadRequiresPayment: data.downloadRequiresPayment,
     notes: data.notes || null,
     categories: data.categories.map(category => ({
       id: category.id,
@@ -95,6 +97,14 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
         v-model="state.membershipNumberRequired"
         label="Mitgliedsnummer erforderlich"
         description="Jede Anfrage braucht dann die Vereinsmitgliedsnummer des Inhabers."
+      />
+    </UFormField>
+
+    <UFormField name="downloadRequiresPayment">
+      <USwitch
+        v-model="state.downloadRequiresPayment"
+        label="PDF erst nach bestätigter Zahlung"
+        description="Mitglieder können ihr Ticket-PDF erst herunterladen, wenn du die Zahlung bestätigt hast."
       />
     </UFormField>
 

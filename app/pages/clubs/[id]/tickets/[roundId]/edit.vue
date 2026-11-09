@@ -18,6 +18,7 @@ const initial = computed<TicketRoundInput | undefined>(() => round.value
       requestDeadline: round.value.requestDeadline,
       maxTicketsPerMember: round.value.maxTicketsPerMember,
       membershipNumberRequired: round.value.membershipNumberRequired,
+      downloadRequiresPayment: round.value.downloadRequiresPayment,
       notes: round.value.notes,
       categories: round.value.categories
     }

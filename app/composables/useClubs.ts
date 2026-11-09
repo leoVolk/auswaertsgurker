@@ -13,6 +13,8 @@ export interface ClubMembership {
   name: string
   role: ClubRole
   team: ClubTeam | null
+  /** PayPal.Me-Name des Fanclubs */
+  paypalMe: string | null
 }
 
 export const ROLE_LABELS: Record<ClubRole, string> = {
@@ -20,15 +22,15 @@ export const ROLE_LABELS: Record<ClubRole, string> = {
   member: 'Mitglied'
 }
 
-const CLUB_COLUMNS = 'id, name, league_shortcut, team_id, team_name'
+const CLUB_COLUMNS = 'id, name, league_shortcut, team_id, team_name, paypal_me'
 
-type ClubRow = Pick<Tables<'clubs'>, 'id' | 'name' | 'league_shortcut' | 'team_id' | 'team_name'>
+type ClubRow = Pick<Tables<'clubs'>, 'id' | 'name' | 'league_shortcut' | 'team_id' | 'team_name' | 'paypal_me'>
 
 function toMembership(club: ClubRow, role: ClubRole): ClubMembership {
   const team = isLeagueShortcut(club.league_shortcut) && club.team_id && club.team_name
     ? { league: club.league_shortcut, teamId: club.team_id, name: club.team_name }
     : null
-  return { id: club.id, name: club.name, role, team }
+  return { id: club.id, name: club.name, role, team, paypalMe: club.paypal_me }
 }
 
 /** Alle Fanclubs, in denen der angemeldete User Mitglied ist. */
@@ -97,14 +99,15 @@ export function useCreateClub() {
 export function useUpdateClub() {
   const supabase = useSupabaseClient()
 
-  return async (clubId: string, input: { name: string, team: ClubTeam }) => {
+  return async (clubId: string, input: { name: string, team: ClubTeam, paypalMe: string | null }) => {
     const { error } = await supabase
       .from('clubs')
       .update({
         name: input.name,
         league_shortcut: input.team.league,
         team_id: input.team.teamId,
-        team_name: input.team.name
+        team_name: input.team.name,
+        paypal_me: input.paypalMe
       })
       .eq('id', clubId)
     if (error) throw error

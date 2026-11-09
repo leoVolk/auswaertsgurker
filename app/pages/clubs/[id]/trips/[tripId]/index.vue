@@ -156,6 +156,7 @@ async function onDelete() {
     <TripRegistrationCard
       :trip="trip"
       :stats="tripStats"
+      :paypal-me="club.paypalMe"
       @changed="onRegistrationChanged"
     />
 
@@ -163,6 +164,7 @@ async function onDelete() {
       v-if="isOrganizer"
       :trip-id="trip.id"
       :capacity="trip.capacity"
+      :price-cents="trip.priceCents"
       @changed="refreshStats"
     />
 
