@@ -96,6 +96,7 @@ export async function useTripParticipants(tripId: MaybeRefOrGetter<string>) {
 
 export function useTripRegistrationActions() {
   const supabase = useSupabaseClient()
+  const dispatch = useNotificationDispatch()
 
   async function register(tripId: string) {
     const { data, error } = await supabase.rpc('register_for_trip', { p_trip_id: tripId })
@@ -106,6 +107,8 @@ export function useTripRegistrationActions() {
   async function cancel(registrationId: string) {
     const { error } = await supabase.rpc('cancel_trip_registration', { p_registration_id: registrationId })
     if (error) throw error
+    // Absage kann jemanden nachrücken lassen
+    dispatch()
   }
 
   async function confirm(registrationId: string) {

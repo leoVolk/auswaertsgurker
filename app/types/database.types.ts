@@ -205,23 +205,127 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          attempts: number
+          body: string
+          claimed_at: string | null
+          club_id: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          last_error: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"]
+          title: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          claimed_at?: string | null
+          club_id?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          last_error?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          title: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          claimed_at?: string | null
+          club_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          last_error?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          title?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
           display_name: string | null
+          email_notifications: boolean
           id: string
         }
         Insert: {
           created_at?: string
           display_name?: string | null
+          email_notifications?: boolean
           id: string
         }
         Update: {
           created_at?: string
           display_name?: string | null
+          email_notifications?: boolean
           id?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_categories: {
         Row: {
@@ -567,6 +671,34 @@ export type Database = {
         Args: { p_registration_id: string }
         Returns: undefined
       }
+      claim_notifications: {
+        Args: { p_limit: number }
+        Returns: {
+          attempts: number
+          body: string
+          claimed_at: string | null
+          club_id: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          last_error: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"]
+          title: string
+          url: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notifications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_notifications: {
+        Args: { p_error: string; p_ids: string[]; p_success: boolean }
+        Returns: undefined
+      }
       confirm_all_trip_registrations: {
         Args: { p_trip_id: string }
         Returns: number
@@ -576,7 +708,22 @@ export type Database = {
         Returns: undefined
       }
       create_club: { Args: { p_name: string }; Returns: string }
+      delete_push_subscription: {
+        Args: { p_endpoint: string }
+        Returns: undefined
+      }
       detach_ticket_file: { Args: { p_request_id: string }; Returns: string }
+      enqueue_notifications: {
+        Args: {
+          p_body: string
+          p_club_id: string
+          p_kind: Database["public"]["Enums"]["notification_kind"]
+          p_title: string
+          p_url: string
+          p_user_ids: string[]
+        }
+        Returns: undefined
+      }
       ensure_away_game: {
         Args: {
           p_club_id: string
@@ -589,6 +736,7 @@ export type Database = {
         }
         Returns: string
       }
+      format_berlin_datetime: { Args: { p_ts: string }; Returns: string }
       get_invite: {
         Args: { p_token: string }
         Returns: {
@@ -612,6 +760,15 @@ export type Database = {
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
       is_club_organizer: { Args: { p_club_id: string }; Returns: boolean }
       join_club: { Args: { p_token: string }; Returns: string }
+      notification_recipients: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          display_name: string
+          email: string
+          email_notifications: boolean
+          user_id: string
+        }[]
+      }
       promote_trip_waitlist: { Args: { p_trip_id: string }; Returns: undefined }
       purge_away_game_ticket_data: {
         Args: { p_away_game_id: string; p_kickoff_at: string }
@@ -636,6 +793,15 @@ export type Database = {
           p_membership_number: string
         }
         Returns: string
+      }
+      save_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent: string
+        }
+        Returns: undefined
       }
       set_payment_status: {
         Args: {
@@ -671,6 +837,13 @@ export type Database = {
         Args: { p_round: Database["public"]["Tables"]["ticket_rounds"]["Row"] }
         Returns: boolean
       }
+      trip_display_label: {
+        Args: {
+          p_title: string
+          p_transport: Database["public"]["Enums"]["transport_mode"]
+        }
+        Returns: string
+      }
       update_ticket_request_holder: {
         Args: {
           p_holder_name: string
@@ -682,6 +855,16 @@ export type Database = {
     }
     Enums: {
       club_role: "organizer" | "member"
+      notification_kind:
+        | "kickoff_scheduled"
+        | "kickoff_changed"
+        | "waitlist_promoted"
+        | "ticket_allocated"
+        | "ticket_rejected"
+        | "ticket_delivery"
+        | "trip_created"
+        | "ticket_round_opened"
+      notification_status: "pending" | "sending" | "sent" | "failed"
       payment_status: "open" | "reported" | "confirmed" | "refunded"
       registration_status: "requested" | "confirmed" | "waitlist" | "cancelled"
       ticket_delivery_method: "pickup" | "box_office" | "digital"
@@ -823,6 +1006,17 @@ export const Constants = {
   public: {
     Enums: {
       club_role: ["organizer", "member"],
+      notification_kind: [
+        "kickoff_scheduled",
+        "kickoff_changed",
+        "waitlist_promoted",
+        "ticket_allocated",
+        "ticket_rejected",
+        "ticket_delivery",
+        "trip_created",
+        "ticket_round_opened",
+      ],
+      notification_status: ["pending", "sending", "sent", "failed"],
       payment_status: ["open", "reported", "confirmed", "refunded"],
       registration_status: ["requested", "confirmed", "waitlist", "cancelled"],
       ticket_delivery_method: ["pickup", "box_office", "digital"],

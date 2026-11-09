@@ -147,6 +147,7 @@ function toRow(input: TripInput) {
 export function useTripActions(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
   const ensureAwayGame = useEnsureAwayGame()
+  const dispatch = useNotificationDispatch()
 
   /** Legt das Auswärtsspiel bei Bedarf an (bzw. aktualisiert dessen Spieldaten) und dann die Fahrt. */
   async function createTrip(match: AwayMatch, input: TripInput) {
@@ -158,12 +159,15 @@ export function useTripActions(clubId: MaybeRefOrGetter<string>) {
       .select('id')
       .single()
     if (error) throw error
+    dispatch()
     return data.id
   }
 
   async function updateTrip(tripId: string, input: TripInput) {
     const { error } = await supabase.from('trips').update(toRow(input)).eq('id', tripId)
     if (error) throw error
+    // Mehr Plätze lassen die Warteliste nachrücken
+    dispatch()
   }
 
   async function deleteTrip(tripId: string) {

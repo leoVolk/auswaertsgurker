@@ -1,6 +1,8 @@
 import type { Tables } from '~/types/database.types'
 
-export type Profile = Pick<Tables<'profiles'>, 'id' | 'display_name'>
+export type Profile = Pick<Tables<'profiles'>, 'id' | 'display_name' | 'email_notifications'>
+
+const PROFILE_COLUMNS = 'id, display_name, email_notifications'
 
 export function useProfile() {
   const supabase = useSupabaseClient()
@@ -19,7 +21,7 @@ export function useProfile() {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name')
+      .select(PROFILE_COLUMNS)
       .eq('id', id)
       .single()
     if (error) throw error
@@ -28,24 +30,27 @@ export function useProfile() {
     return data
   }
 
-  async function updateDisplayName(displayName: string) {
+  async function update(changes: { display_name?: string, email_notifications?: boolean }) {
     const id = userId.value
     if (!id) throw new Error('Nicht angemeldet')
 
     const { data, error } = await supabase
       .from('profiles')
-      .update({ display_name: displayName })
+      .update(changes)
       .eq('id', id)
-      .select('id, display_name')
+      .select(PROFILE_COLUMNS)
       .single()
     if (error) throw error
 
     profile.value = data
   }
 
+  const updateDisplayName = (displayName: string) => update({ display_name: displayName })
+  const updateEmailNotifications = (enabled: boolean) => update({ email_notifications: enabled })
+
   function clearProfile() {
     profile.value = null
   }
 
-  return { profile, fetchProfile, updateDisplayName, clearProfile }
+  return { profile, fetchProfile, updateDisplayName, updateEmailNotifications, clearProfile }
 }

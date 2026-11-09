@@ -12,10 +12,27 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Werte kommen zur Laufzeit aus NUXT_*-Umgebungsvariablen (siehe .env.example)
   runtimeConfig: {
-    // Nur serverseitig, gesetzt über NUXT_CRON_SECRET; schützt /api/cron/*.
-    // Auf Vercel denselben Wert zusätzlich als CRON_SECRET hinterlegen, damit Vercel ihn mitsendet.
-    cronSecret: ''
+    // Schützt /api/cron/*. Auf Vercel denselben Wert zusätzlich als CRON_SECRET hinterlegen,
+    // damit Vercel ihn beim Cron-Aufruf mitsendet.
+    cronSecret: '',
+    // E-Mail-Benachrichtigungen (z. B. Strato: smtp.strato.de, Port 465)
+    smtp: {
+      host: '',
+      port: 465,
+      user: '',
+      pass: '',
+      from: ''
+    },
+    // Web-Push
+    vapidPrivateKey: '',
+    vapidSubject: '',
+    public: {
+      // Basis-URL für Links in E-Mails und Push, z. B. https://auswaertsfahrt.example
+      siteUrl: '',
+      vapidPublicKey: ''
+    }
   },
 
   compatibilityDate: '2026-06-30',

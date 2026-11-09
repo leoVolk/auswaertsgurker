@@ -2,6 +2,9 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 
 // Täglicher Job (Vercel Cron, siehe vercel.json). Vercel sendet "Authorization: Bearer <CRON_SECRET>";
 // derselbe Wert steht serverseitig in runtimeConfig.cronSecret (NUXT_CRON_SECRET).
+//   1. Anstoßzeiten mit OpenLigaDB abgleichen (Trigger erzeugt „Anstoßzeit steht fest“)
+//   2. Löschfrist für Ticketdaten anwenden
+//   3. Liegengebliebene Benachrichtigungen verschicken
 
 /** Vergleich in konstanter Zeit, damit das Secret nicht über Antwortzeiten erraten werden kann */
 function safeEqual(a: string, b: string) {
@@ -20,7 +23,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  const summary = await purgeExpiredTicketData(serverSupabaseServiceRole(event))
-  console.info('Löschfrist', summary)
+  const supabase = serverSupabaseServiceRole(event)
+  const kickoffs = await syncKickoffTimes(supabase)
+  const retention = await purgeExpiredTicketData(supabase)
+  const notifications = await dispatchNotifications(supabase, notificationSiteUrl(getRequestURL(event).origin))
+
+  const summary = { kickoffs, retention, notifications }
+  console.info('Täglicher Job', summary)
   return summary
 })

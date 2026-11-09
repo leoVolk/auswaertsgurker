@@ -4,6 +4,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 const supabase = useSupabaseClient()
 const userId = useCurrentUserId()
 const { profile, clearProfile } = useProfile()
+const push = usePushNotifications()
 const showError = useErrorToast()
 
 const items = computed<DropdownMenuItem[][]>(() => [
@@ -11,12 +12,14 @@ const items = computed<DropdownMenuItem[][]>(() => [
   [
     { label: 'Meine Fanclubs', icon: 'i-lucide-users', to: '/' },
     { label: 'Fanclub gründen', icon: 'i-lucide-plus', to: '/clubs/new' },
-    { label: 'Namen ändern', icon: 'i-lucide-pencil', to: '/onboarding' }
+    { label: 'Profil & Benachrichtigungen', icon: 'i-lucide-user-cog', to: '/profile' }
   ],
   [{ label: 'Abmelden', icon: 'i-lucide-log-out', onSelect: signOut }]
 ])
 
 async function signOut() {
+  // Gerät soll nach dem Abmelden keine Push-Nachrichten dieses Kontos mehr bekommen
+  if (push.subscribed.value) await push.unsubscribe().catch(() => {})
   const { error } = await supabase.auth.signOut()
   if (error) {
     showError(error)

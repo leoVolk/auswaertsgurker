@@ -1,8 +1,5 @@
-import type { serverSupabaseServiceRole } from '#supabase/server'
-import type { Database } from '../../app/types/database.types'
 import type { MatchResult } from './openligadb'
-
-type ServiceClient = ReturnType<typeof serverSupabaseServiceRole<Database>>
+import type { ServiceClient } from './supabase'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const STORAGE_BATCH = 100

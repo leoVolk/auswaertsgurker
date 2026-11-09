@@ -8,6 +8,7 @@ export interface ClubMember {
 
 export async function useClubMembers(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
+  const dispatch = useNotificationDispatch()
 
   const { data: members, error, refresh } = await useAsyncData(
     () => `club-members-${toValue(clubId)}`,
@@ -53,6 +54,8 @@ export async function useClubMembers(clubId: MaybeRefOrGetter<string>) {
       .eq('club_id', toValue(clubId))
       .eq('user_id', userId)
     if (error) throw error
+    // Stornierte Anmeldungen lassen die Warteliste nachrücken
+    dispatch()
     await refresh()
   }
 

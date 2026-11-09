@@ -36,16 +36,31 @@ pnpm dev               # http://localhost:3000
    | `NUXT_SUPABASE_SECRET_KEY` | Secret Key aus Supabase (nur serverseitig) |
    | `NUXT_CRON_SECRET` | Zufälliger Wert, z. B. `openssl rand -hex 32` |
    | `CRON_SECRET` | Derselbe Wert wie `NUXT_CRON_SECRET` (Vercel sendet ihn beim Cron-Aufruf mit) |
+   | `NUXT_PUBLIC_SITE_URL` | Produktions-URL, z. B. `https://auswaertsfahrt.example` (für Links in Mails/Push) |
+   | `NUXT_SMTP_HOST`, `NUXT_SMTP_PORT` | z. B. `smtp.strato.de`, `465` |
+   | `NUXT_SMTP_USER`, `NUXT_SMTP_PASS` | Zugang des Postfachs, über das auch Supabase die Login-Codes schickt |
+   | `NUXT_SMTP_FROM` | Absender, z. B. `Auswärtsfahrt <login@deine-subdomain.de>` |
+   | `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `NUXT_VAPID_PRIVATE_KEY` | Schlüsselpaar für Web-Push (`pnpm exec web-push generate-vapid-keys`) |
+   | `NUXT_VAPID_SUBJECT` | Optional, z. B. `mailto:login@deine-subdomain.de` (sonst Absender bzw. Site-URL) |
 
 3. **Supabase → Authentication → URL Configuration:** *Site URL* auf die Produktions-Domain setzen
    und `https://<domain>/confirm` unter *Redirect URLs* ergänzen.
 4. **Supabase → Authentication → Emails:** Eigenes SMTP muss eingerichtet sein, und die Vorlagen
    „Magic Link“ und „Confirm signup“ müssen `{{ .Token }}` enthalten (Login per Code).
-5. **Löschfrist prüfen:** `vercel.json` startet täglich um 04:00 UTC `/api/cron/cleanup`. Er löscht
-   Mitgliedsnummern und Ticket-PDFs 30 Tage nach dem Spiel. Manuell auslösen:
+5. **Täglicher Job prüfen:** `vercel.json` startet täglich um 04:00 UTC `/api/cron/daily`. Er gleicht
+   Anstoßzeiten mit OpenLigaDB ab (löst „Anstoßzeit steht fest“ aus), löscht Mitgliedsnummern und
+   Ticket-PDFs 30 Tage nach dem Spiel und verschickt liegengebliebene Benachrichtigungen. Manuell:
 
    ```bash
-   curl -H "Authorization: Bearer <CRON_SECRET>" https://<domain>/api/cron/cleanup
+   curl -H "Authorization: Bearer <CRON_SECRET>" https://<domain>/api/cron/daily
    ```
 
-   Die Antwort zeigt, wie viele Spiele geprüft und bereinigt wurden.
+   Die Antwort zeigt, was abgeglichen, bereinigt und verschickt wurde.
+
+## Benachrichtigungen
+
+Datenbank-Trigger schreiben Benachrichtigungen in die Tabelle `notifications` (Postausgang). Die App
+ruft nach passenden Aktionen `POST /api/notifications/dispatch` auf, der Server verschickt sie per
+E-Mail (SMTP) und Web-Push und markiert sie als gesendet. Fehlgeschlagene Mails werden bis zu fünfmal
+erneut versucht. Den Stand siehst du im Supabase-Dashboard in der Tabelle `notifications`
+(`status`, `last_error`).

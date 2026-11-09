@@ -97,8 +97,22 @@ Schema auf Sicherheitsprobleme.
   Ticket. Link-Format: `paypal.me/<Name>/<Betrag>EUR` mit Punkt als Dezimaltrenner
   (`app/utils/paypal.ts`). `ticket_rounds.download_requires_payment` sperrt das PDF bis zur
   Bestätigung (Storage-Policy).
-- **Löschfrist:** `server/api/cron/cleanup.get.ts` (täglich per Vercel Cron, `vercel.json`, geschützt
-  mit `runtimeConfig.cronSecret` = `NUXT_CRON_SECRET`, Vercel sendet `CRON_SECRET` als Bearer-Token).
+- **Benachrichtigungen:** DB-Trigger schreiben deutschsprachige Einträge (Titel, Text, App-Pfad) in
+  `notifications` (Postausgang; Mitglieder lesen nur eigene). Neue Ereignisse = neuer Trigger, der
+  `enqueue_notifications` aufruft, plus Wert im Enum `notification_kind`. Versand in
+  `server/utils/notify.ts`: `claim_notifications` (Sperre, max. 5 Versuche) → gruppieren nach
+  Person/Art/Ziel → E-Mail via `nodemailer` (`runtimeConfig.smtp`, nur wenn
+  `profiles.email_notifications`) und Push via `web-push` (`push_subscriptions`, abgelaufene Abos
+  werden gelöscht) → `complete_notifications`. Angestoßen von der App über
+  `useNotificationDispatch()` (entprellt, nach Aktionen in den Action-Composables) und vom täglichen
+  Cron. `web-push` 4 ist ESM ohne Default-Export: nur benannte Importe.
+- **PWA:** `public/manifest.webmanifest`, `public/sw.js` (nur Push und Klick, kein Offline-Cache),
+  Icons in `public/icons/` (Platzhalter aus `icon.svg`), Registrierung in `app/plugins/pwa.client.ts`.
+  Profil mit E-Mail-Schalter, Push-Opt-in und Installationshinweis unter `/profile`.
+- **Täglicher Job:** `server/api/cron/daily.get.ts` (Vercel Cron, `vercel.json`, geschützt mit
+  `runtimeConfig.cronSecret` = `NUXT_CRON_SECRET`, Vercel sendet `CRON_SECRET` als Bearer-Token):
+  Anstoßzeiten abgleichen (`syncKickoffTimes`), Löschfrist, liegengebliebene Benachrichtigungen.
+- **Löschfrist:**
   `server/utils/retention.ts` prüft per OpenLigaDB, welche Spiele beendet und älter als
   `TICKET_DATA_RETENTION_DAYS` sind, löscht deren PDFs über die Storage-API (Service Role) und ruft
   dann `purge_away_game_ticket_data` auf (nur `service_role`; markiert

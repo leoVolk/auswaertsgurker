@@ -64,20 +64,14 @@ export async function getLeagueTeams(league: LeagueShortcut, season: number): Pr
 }
 
 /**
- * Kommende Auswärtsspiele eines Vereins.
+ * Liefert eine Prüfung, ob ein Spieltag terminiert ist.
  *
  * OpenLigaDB kennzeichnet nicht terminierte Spieltage nicht ausdrücklich, sondern setzt alle
  * Spiele auf denselben Platzhalter (Samstag 15:30). Ein Spieltag gilt daher als terminiert,
  * sobald seine Spiele unterschiedliche Anstoßzeiten haben. Ausnahme: Am letzten Spieltag
  * spielen alle gleichzeitig.
  */
-export async function getUpcomingAwayMatches(
-  league: LeagueShortcut,
-  season: number,
-  teamId: number
-): Promise<AwayMatch[]> {
-  const matches = await fetchSeasonMatches(league, season)
-
+function scheduledMatchdays(matches: OldbMatch[]) {
   const kickoffsByMatchday = new Map<number, Set<string>>()
   let lastMatchday = 0
   for (const match of matches) {
@@ -88,8 +82,28 @@ export async function getUpcomingAwayMatches(
     kickoffsByMatchday.set(matchday, kickoffs)
   }
 
-  const isScheduled = (matchday: number) =>
+  return (matchday: number) =>
     matchday === lastMatchday || (kickoffsByMatchday.get(matchday)?.size ?? 0) > 1
+}
+
+/** Feststehende Anstoßzeiten aller Spiele einer Saison (null = Termin offen), nach Spiel-ID */
+export async function getScheduledKickoffs(league: LeagueShortcut, season: number) {
+  const matches = await fetchSeasonMatches(league, season)
+  const isScheduled = scheduledMatchdays(matches)
+  return new Map<number, string | null>(matches.map(match => [
+    match.matchID,
+    isScheduled(match.group.groupOrderID) ? match.matchDateTimeUTC : null
+  ]))
+}
+
+/** Kommende Auswärtsspiele eines Vereins. */
+export async function getUpcomingAwayMatches(
+  league: LeagueShortcut,
+  season: number,
+  teamId: number
+): Promise<AwayMatch[]> {
+  const matches = await fetchSeasonMatches(league, season)
+  const isScheduled = scheduledMatchdays(matches)
 
   return matches
     .filter(match => match.team2.teamId === teamId && !match.matchIsFinished)

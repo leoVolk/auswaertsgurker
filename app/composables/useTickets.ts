@@ -221,6 +221,7 @@ export async function useTicketRequests(roundId: MaybeRefOrGetter<string>) {
 
 export function useTicketRequestActions() {
   const supabase = useSupabaseClient()
+  const dispatch = useNotificationDispatch()
 
   // Die generierten Typen kennen kein null für RPC-Parameter; null wird trotzdem korrekt übertragen
   async function requestTicket(categoryId: string, holderName: string, membershipNumber: string | null) {
@@ -253,11 +254,13 @@ export function useTicketRequestActions() {
       p_status: status
     })
     if (error) throw error
+    dispatch()
   }
 
   async function autoAllocate(categoryId: string) {
     const { data, error } = await supabase.rpc('auto_allocate_tickets', { p_category_id: categoryId })
     if (error) throw error
+    dispatch()
     return data[0] ?? { allocated: 0, waitlisted: 0 }
   }
 
@@ -267,6 +270,7 @@ export function useTicketRequestActions() {
 export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
   const ensureAwayGame = useEnsureAwayGame()
+  const dispatch = useNotificationDispatch()
 
   function categoryRow(category: TicketRoundInput['categories'][number], index: number) {
     return {
@@ -312,6 +316,7 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
       throw categoriesError
     }
 
+    dispatch()
     return round.id
   }
 
@@ -402,6 +407,7 @@ export function ticketFileProblem(file: File) {
 
 export function useTicketDeliveryActions(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
+  const dispatch = useNotificationDispatch()
   const bucket = () => supabase.storage.from(TICKET_FILES_BUCKET)
 
   async function uploadTicketFile(requestId: string, file: File) {
@@ -417,6 +423,7 @@ export function useTicketDeliveryActions(clubId: MaybeRefOrGetter<string>) {
 
     const { error } = await supabase.rpc('attach_ticket_file', { p_request_id: requestId })
     if (error) throw error
+    dispatch()
   }
 
   async function removeTicketFile(requestId: string) {
@@ -442,6 +449,7 @@ export function useTicketDeliveryActions(clubId: MaybeRefOrGetter<string>) {
       p_pickup_at: pickupAt as string
     })
     if (error) throw error
+    dispatch()
     if (detachedPaths.length) {
       const { error: storageError } = await bucket().remove(detachedPaths)
       if (storageError) throw storageError
