@@ -3,7 +3,7 @@
     <UHeader
       to="/"
       :toggle="false"
-      :ui="{ container: 'max-w-lg' }"
+      :ui="{ container: 'max-w-4xl' }"
     >
       <template #title>
         <span class="flex items-center gap-2">
@@ -22,7 +22,7 @@
     </UHeader>
 
     <UMain>
-      <div class="mx-auto w-full max-w-lg px-4 py-6 sm:py-10">
+      <div class="mx-auto w-full max-w-4xl px-4 py-6 sm:py-10">
         <slot />
       </div>
     </UMain>
