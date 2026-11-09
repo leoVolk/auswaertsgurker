@@ -39,11 +39,19 @@ verwenden, sonst entsteht eine zweite Lockfile.
 Es gibt noch kein Test-Framework. Die CI (`.github/workflows/ci.yml`, Node 24) führt bei jedem
 Push `pnpm lint` und `pnpm typecheck` aus; beides muss grün sein.
 
+DB-Logik (RPCs, Trigger, RLS) wird mit SQL-Skripten in `supabase/checks/` geprüft:
+`pnpm exec supabase db query --remote --yes -f supabase/checks/<datei>.sql`. Die Skripte laufen in
+`begin … rollback`, legen Testnutzer direkt in `auth.users` an und wechseln per
+`set local role authenticated` + `set_config('request.jwt.claims', '{"sub": …}', true)` die Identität.
+Neue Logik nach demselben Muster testen. `pnpm exec supabase db advisors --remote` prüft das
+Schema auf Sicherheitsprobleme.
+
 ## Architektur
 - **Datenmodell:** `profiles` (1:1 zu `auth.users`, per Trigger angelegt), `clubs` (inkl.
   Verein aus OpenLigaDB), `club_members` (Rolle als Enum `club_role`), `club_invites` (ein aktiver
   Link pro Club), `away_games` (Auswärtsspiel pro Club, Anker für Fahrten und Ticketabfragen,
-  angelegt per RPC `ensure_away_game`), `trips`. Tabellen mit `club_id`, die auf eine andere
+  angelegt per RPC `ensure_away_game`), `trips`, `trip_registrations` (eine Zeile pro Person und
+  Fahrt; Reihenfolge der Warteliste über `status_changed_at`). Tabellen mit `club_id`, die auf eine andere
   Club-Tabelle zeigen, nutzen einen zusammengesetzten Fremdschlüssel `(x_id, club_id)`, damit
   nichts clubübergreifend verknüpft werden kann.
 - **OpenLigaDB:** Nur über die Server-Routen `server/api/openligadb/*` (gecacht in
@@ -60,6 +68,12 @@ Push `pnpm lint` und `pnpm typecheck` aus; beides muss grün sein.
   `is_club_organizer(club_id)`, damit es keine Rekursion auf `club_members` gibt. Schreibvorgänge
   über mehrere Tabellen oder ohne direkte Insert-Policy laufen über RPCs (`create_club`,
   `join_club`, `regenerate_invite`; `get_invite` ist auch ohne Login aufrufbar).
+- **Anmeldungen:** Statuswechsel nur über RPCs (`register_for_trip`, `cancel_trip_registration`,
+  `confirm_trip_registration`, `confirm_all_trip_registrations`), die die Fahrt per `for update`
+  sperren. Nachrücken zentral in `promote_trip_waitlist` (auch per Trigger bei mehr Plätzen und beim
+  Entfernen eines Mitglieds). `requested` belegt bereits einen Platz. Mitglieder lesen nur die
+  eigene Anmeldung; Belegungszahlen kommen aus `get_trip_stats`, weil in diesen Zeilen künftig
+  auch der Zahlungsstatus steht.
 - **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für
   fachlich änderbare Spalten gewährt (`grant update (col) ...`). Neue änderbare Spalten brauchen
   in der Migration ein eigenes `grant update`, sonst schlägt das Update mit 42501 fehl.

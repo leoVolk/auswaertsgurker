@@ -140,7 +140,7 @@ function memberActions(member: ClubMember): DropdownMenuItem[][] {
       v-model:open="removeOpen"
       title="Mitglied entfernen?"
       :description="memberToRemove
-        ? `${memberToRemove.displayName} verliert den Zugriff auf den Fanclub. Solange der Einladungslink gültig ist, ist ein erneuter Beitritt möglich – erstelle bei Bedarf einen neuen Link.`
+        ? `${memberToRemove.displayName} verliert den Zugriff auf den Fanclub, Anmeldungen für Fahrten werden storniert. Solange der Einladungslink gültig ist, ist ein erneuter Beitritt möglich – erstelle bei Bedarf einen neuen Link.`
         : undefined"
     >
       <template #footer>

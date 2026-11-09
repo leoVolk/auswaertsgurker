@@ -8,10 +8,20 @@ const showError = useErrorToast()
 const { club, isOrganizer } = await useClub(clubId)
 const { trip: loadedTrip } = await useTrip(tripId)
 const { matches } = await useAwayMatches(() => club.value?.team)
+const { stats, refresh: refreshStats } = await useTripStats(clubId)
 const { deleteTrip } = useTripActions(clubId)
 
 // Fahrt nur im passenden Fanclub anzeigen
 const trip = computed(() => (loadedTrip.value?.clubId === clubId.value ? loadedTrip.value : null))
+const tripStats = computed(() => (trip.value ? stats.value.get(trip.value.id) : undefined))
+
+async function onRegistrationChanged() {
+  await Promise.all([
+    refreshStats(),
+    // Organisatoren sehen die eigene Anmeldung auch in der Liste
+    isOrganizer.value ? refreshNuxtData(`trip-participants-${tripId.value}`) : undefined
+  ])
+}
 
 // Anstoß möglichst aktuell aus OpenLigaDB, sonst der gespeicherte Stand
 const liveMatch = computed(() => matches.value.find(m => m.matchId === trip.value?.awayGame.matchId))
@@ -143,11 +153,17 @@ async function onDelete() {
       </dl>
     </UCard>
 
-    <UAlert
-      color="info"
-      variant="subtle"
-      icon="i-lucide-info"
-      title="Anmelden kannst du dich bald direkt hier."
+    <TripRegistrationCard
+      :trip="trip"
+      :stats="tripStats"
+      @changed="onRegistrationChanged"
+    />
+
+    <TripParticipants
+      v-if="isOrganizer"
+      :trip-id="trip.id"
+      :capacity="trip.capacity"
+      @changed="refreshStats"
     />
 
     <div
@@ -167,7 +183,7 @@ async function onDelete() {
       <UModal
         v-model:open="deleteOpen"
         title="Fahrt löschen?"
-        description="Die Fahrt wird für alle Mitglieder entfernt. Das lässt sich nicht rückgängig machen."
+        description="Die Fahrt wird samt aller Anmeldungen für alle Mitglieder entfernt. Das lässt sich nicht rückgängig machen."
       >
         <UButton
           label="Fahrt löschen"

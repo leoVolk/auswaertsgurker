@@ -217,6 +217,51 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_registrations: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["registration_status"]
+          status_changed_at: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          status: Database["public"]["Enums"]["registration_status"]
+          status_changed_at?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          status_changed_at?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_registrations_trip_id_club_id_fkey"
+            columns: ["trip_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id", "club_id"]
+          },
+          {
+            foreignKeyName: "trip_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           away_game_id: string
@@ -292,6 +337,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_trip_registration: {
+        Args: { p_registration_id: string }
+        Returns: undefined
+      }
+      confirm_all_trip_registrations: {
+        Args: { p_trip_id: string }
+        Returns: number
+      }
+      confirm_trip_registration: {
+        Args: { p_registration_id: string }
+        Returns: undefined
+      }
       create_club: { Args: { p_name: string }; Returns: string }
       ensure_away_game: {
         Args: {
@@ -313,14 +370,31 @@ export type Database = {
           is_member: boolean
         }[]
       }
+      get_trip_stats: {
+        Args: { p_club_id: string }
+        Returns: {
+          my_registration_id: string
+          my_status: Database["public"]["Enums"]["registration_status"]
+          my_waitlist_position: number
+          taken_seats: number
+          trip_id: string
+          waitlist_count: number
+        }[]
+      }
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
       is_club_organizer: { Args: { p_club_id: string }; Returns: boolean }
       join_club: { Args: { p_token: string }; Returns: string }
+      promote_trip_waitlist: { Args: { p_trip_id: string }; Returns: undefined }
       regenerate_invite: { Args: { p_club_id: string }; Returns: string }
+      register_for_trip: {
+        Args: { p_trip_id: string }
+        Returns: Database["public"]["Enums"]["registration_status"]
+      }
       shares_club_with: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       club_role: "organizer" | "member"
+      registration_status: "requested" | "confirmed" | "waitlist" | "cancelled"
       transport_mode: "bus" | "train" | "car"
     }
     CompositeTypes: {
@@ -453,6 +527,7 @@ export const Constants = {
   public: {
     Enums: {
       club_role: ["organizer", "member"],
+      registration_status: ["requested", "confirmed", "waitlist", "cancelled"],
       transport_mode: ["bus", "train", "car"],
     },
   },

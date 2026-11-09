@@ -26,6 +26,7 @@ export interface TripSummary {
   transport: TransportMode
   title: string | null
   departureAt: string | null
+  capacity: number | null
 }
 
 export interface TripDetail extends TripInput {
@@ -56,7 +57,7 @@ export async function useClubTrips(clubId: MaybeRefOrGetter<string>) {
 
       const { data, error } = await supabase
         .from('trips')
-        .select('id, transport, title, departure_at, away_game:away_games!inner(openligadb_match_id)')
+        .select('id, transport, title, departure_at, capacity, away_game:away_games!inner(openligadb_match_id)')
         .eq('club_id', id)
         .order('departure_at', { nullsFirst: false })
       if (error) throw error
@@ -66,7 +67,8 @@ export async function useClubTrips(clubId: MaybeRefOrGetter<string>) {
         matchId: trip.away_game.openligadb_match_id,
         transport: trip.transport,
         title: trip.title,
-        departureAt: trip.departure_at
+        departureAt: trip.departure_at,
+        capacity: trip.capacity
       }))
     },
     { default: () => [] }

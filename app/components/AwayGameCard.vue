@@ -1,13 +1,27 @@
 <script setup lang="ts">
 import type { AwayMatch } from '#shared/types/openligadb'
+import type { TripStats } from '~/composables/useTripRegistrations'
 import type { TripSummary } from '~/composables/useTrips'
 
-defineProps<{
+const props = defineProps<{
   clubId: string
   match: AwayMatch
   trips: TripSummary[]
+  stats: Map<string, TripStats>
   isOrganizer: boolean
 }>()
+
+function tripMeta(trip: TripSummary) {
+  const departure = trip.departureAt ? `Abfahrt ${formatDateTime(trip.departureAt)}` : 'Abfahrt noch offen'
+  const taken = props.stats.get(trip.id)?.takenSeats ?? 0
+  const seats = trip.capacity ? `${taken}/${trip.capacity} Plätze` : `${taken} dabei`
+  return `${departure} · ${seats}`
+}
+
+function myStatus(trip: TripSummary) {
+  const status = props.stats.get(trip.id)?.myStatus
+  return status && status !== 'cancelled' ? REGISTRATION_STATUS[status] : null
+}
 </script>
 
 <template>
@@ -44,10 +58,16 @@ defineProps<{
           />
           <span class="min-w-0 flex-1">
             <span class="block truncate font-medium text-highlighted">{{ tripLabel(trip) }}</span>
-            <span class="block text-sm text-muted">
-              {{ trip.departureAt ? `Abfahrt ${formatDateTime(trip.departureAt)}` : 'Abfahrt noch offen' }}
-            </span>
+            <span class="block text-sm text-muted">{{ tripMeta(trip) }}</span>
           </span>
+          <UBadge
+            v-if="myStatus(trip)"
+            :label="myStatus(trip)?.label"
+            :color="myStatus(trip)?.color"
+            variant="subtle"
+            size="sm"
+            class="shrink-0"
+          />
           <UIcon
             name="i-lucide-chevron-right"
             class="size-5 shrink-0 text-dimmed"

@@ -5,6 +5,7 @@ const clubId = computed(() => String(route.params.id))
 const { club, isOrganizer } = await useClub(clubId)
 const { matches, error: matchesError } = await useAwayMatches(() => club.value?.team)
 const { tripsByMatch } = await useClubTrips(clubId)
+const { stats } = await useTripStats(clubId)
 
 useHead({ title: () => club.value?.name ?? 'Fanclub' })
 </script>
@@ -59,6 +60,7 @@ useHead({ title: () => club.value?.name ?? 'Fanclub' })
         :club-id="club.id"
         :match="match"
         :trips="tripsByMatch.get(match.matchId) ?? []"
+        :stats="stats"
         :is-organizer="isOrganizer"
       />
 
