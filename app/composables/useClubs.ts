@@ -113,3 +113,69 @@ export function useUpdateClub() {
     if (error) throw error
   }
 }
+
+export interface ClubDeletionSummary {
+  members: number
+  trips: number
+  ticketRounds: number
+  /** Bestätigte, nicht erstattete Zahlungen für kommende Spiele */
+  openPayments: number
+  ticketFiles: number
+}
+
+/** Fanclub endgültig löschen (Organisatoren) oder verlassen (Mitglieder) */
+export function useClubMembershipEnd() {
+  const supabase = useSupabaseClient()
+  const userId = useCurrentUserId()
+  const dispatch = useNotificationDispatch()
+
+  async function fetchDeletionSummary(clubId: string): Promise<ClubDeletionSummary | null> {
+    const { data, error } = await supabase.rpc('club_deletion_summary', { p_club_id: clubId })
+    if (error) throw error
+    const row = data[0]
+    return row
+      ? {
+          members: row.members,
+          trips: row.trips,
+          ticketRounds: row.ticket_rounds,
+          openPayments: row.open_payments,
+          ticketFiles: row.ticket_files
+        }
+      : null
+  }
+
+  async function deleteClub(clubId: string) {
+    // Ticket-PDFs zuerst über die Storage-API löschen; nach dem Löschen fehlen die Verweise
+    const { data: files, error: filesError } = await supabase
+      .from('ticket_requests')
+      .select('ticket_file_path')
+      .eq('club_id', clubId)
+      .not('ticket_file_path', 'is', null)
+    if (filesError) throw filesError
+
+    const paths = files.flatMap(file => (file.ticket_file_path ? [file.ticket_file_path] : []))
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error } = await supabase.storage.from(TICKET_FILES_BUCKET).remove(paths.slice(i, i + 100))
+      if (error) throw error
+    }
+
+    const { error, count } = await supabase.from('clubs').delete({ count: 'exact' }).eq('id', clubId)
+    if (error) throw error
+    if (!count) throw new UserError('Der Fanclub konnte nicht gelöscht werden. Das dürfen nur Organisatoren.')
+  }
+
+  async function leaveClub(clubId: string) {
+    if (!userId.value) throw new UserError('Du bist nicht angemeldet.')
+    const { error, count } = await supabase
+      .from('club_members')
+      .delete({ count: 'exact' })
+      .eq('club_id', clubId)
+      .eq('user_id', userId.value)
+    if (error) throw error
+    if (!count) throw new UserError('Du bist kein Mitglied dieses Fanclubs.')
+    // Freie Plätze lassen die Warteliste nachrücken
+    dispatch()
+  }
+
+  return { fetchDeletionSummary, deleteClub, leaveClub }
+}

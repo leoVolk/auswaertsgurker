@@ -164,5 +164,7 @@ async function onSubmit(event: FormSubmitEvent<ClubSettingsForm>) {
         <OpenLigaDbAttribution />
       </template>
     </UCard>
+
+    <ClubDeleteCard :club="club" />
   </div>
 </template>

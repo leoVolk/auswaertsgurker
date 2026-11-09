@@ -11,6 +11,28 @@ const showError = useErrorToast()
 
 const { club, isOrganizer, refresh: refreshClub } = await useClub(clubId)
 const { members, setRole, removeMember } = await useClubMembers(clubId)
+const { leaveClub } = useClubMembershipEnd()
+
+// Der letzte Organisator kann nicht austreten (Schutz auch in der Datenbank)
+const isLastOrganizer = computed(() =>
+  isOrganizer.value && members.value.filter(m => m.role === 'organizer').length <= 1
+)
+
+const leaveOpen = ref(false)
+
+async function onLeave() {
+  if (!club.value) return
+  const clubName = club.value.name
+  try {
+    await leaveClub(club.value.id)
+    leaveOpen.value = false
+    clearNuxtData()
+    toast.add({ title: `Du hast ${clubName} verlassen`, color: 'success', icon: 'i-lucide-check' })
+    await navigateTo('/', { replace: true })
+  } catch (error) {
+    showError(error)
+  }
+}
 
 useHead({ title: () => (club.value ? `Mitglieder · ${club.value.name}` : 'Mitglieder') })
 
@@ -134,6 +156,46 @@ function memberActions(member: ClubMember): DropdownMenuItem[][] {
           </UDropdownMenu>
         </li>
       </ul>
+    </UCard>
+
+    <UCard
+      title="Fanclub verlassen"
+      :description="isLastOrganizer
+        ? 'Als einziger Organisator kannst du nicht austreten. Ernenne vorher jemand anderen zum Organisator oder lösche den Fanclub in den Einstellungen.'
+        : 'Deine Anmeldungen für Fahrten und offene Ticketanfragen werden storniert.'"
+    >
+      <UModal
+        v-model:open="leaveOpen"
+        :title="`${club.name} verlassen?`"
+        description="Deine Anmeldungen für Fahrten und offene Ticketanfragen werden storniert. Bereits zugeteilte Tickets bleiben bestehen. Zurück kommst du nur über einen Einladungslink."
+      >
+        <UButton
+          label="Fanclub verlassen"
+          icon="i-lucide-log-out"
+          color="error"
+          variant="outline"
+          size="lg"
+          block
+          :disabled="isLastOrganizer"
+        />
+
+        <template #footer>
+          <div class="flex w-full justify-end gap-2">
+            <UButton
+              label="Abbrechen"
+              color="neutral"
+              variant="ghost"
+              @click="leaveOpen = false"
+            />
+            <UButton
+              label="Verlassen"
+              color="error"
+              loading-auto
+              @click="onLeave"
+            />
+          </div>
+        </template>
+      </UModal>
     </UCard>
 
     <UModal

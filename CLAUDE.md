@@ -121,6 +121,13 @@ Schema auf Sicherheitsprobleme.
 - **Deployment:** Vercel, Schritte und Umgebungsvariablen in `README.md`, Vorlage in `.env.example`.
 - **Node-Typen:** `@types/node` ist nicht installiert; in `nuxt.config.ts` und Server-Code kein
   `process`, `Buffer` oder `node:*` verwenden (Konfiguration über `runtimeConfig` + `NUXT_*`-Variablen).
+- **Fanclub löschen/verlassen:** Löschen nur für Organisatoren (Policy auf `clubs`), endgültig per
+  Kaskade; Ticket-PDFs löscht der Client vorher über die Storage-API (`useClubMembershipEnd`).
+  Vorschau mit Warnung bei bestätigten Zahlungen für kommende Spiele über `club_deletion_summary`.
+  Verlassen = eigene Zeile in `club_members` löschen; der Trigger storniert Fahrt-Anmeldungen
+  (Warteliste rückt nach) und offene Ticketanfragen, zugeteilte Tickets bleiben. Trigger auf
+  `club_members` müssen beim Löschen des ganzen Fanclubs (Kaskade) aussteigen:
+  `if not exists (select 1 from public.clubs where id = old.club_id)`.
 - **Spaltenrechte:** Für `authenticated` ist UPDATE auf Tabellenebene entzogen und nur für
   fachlich änderbare Spalten gewährt (`grant update (col) ...`). Neue änderbare Spalten brauchen
   in der Migration ein eigenes `grant update`, sonst schlägt das Update mit 42501 fehl.

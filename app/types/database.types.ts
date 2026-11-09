@@ -695,6 +695,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      club_deletion_summary: {
+        Args: { p_club_id: string }
+        Returns: {
+          members: number
+          open_payments: number
+          ticket_files: number
+          ticket_rounds: number
+          trips: number
+        }[]
+      }
       complete_notifications: {
         Args: { p_error: string; p_ids: string[]; p_success: boolean }
         Returns: undefined
