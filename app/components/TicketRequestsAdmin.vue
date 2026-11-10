@@ -136,23 +136,27 @@ function ticketActions(request: TicketRequest): DropdownMenuItem[] {
   return items
 }
 
-// Stornierte stehen zugeklappt unter den übrigen Gruppen
-const STATUS_ORDER: TicketStatus[] = ['requested', 'waitlist', 'allocated', 'rejected']
+// Jede Statusgruppe ist aufklappbar; offen startet nur „Angefragt“, weil dort Entscheidungen anstehen
+const STATUS_ORDER: TicketStatus[] = ['requested', 'waitlist', 'allocated', 'rejected', 'cancelled']
 
 const categories = computed(() => props.round.categories.map((category) => {
   const requests = props.requests.filter(r => r.categoryId === category.id)
   const count = (status: TicketStatus) => requests.filter(r => r.status === status).length
-  const cancelled = requests.filter(r => r.status === 'cancelled')
   return {
     ...category,
     allocated: count('allocated'),
     pending: count('requested') + count('waitlist'),
     groups: STATUS_ORDER
-      .map(status => ({ status, items: requests.filter(r => r.status === status) }))
-      .filter(group => group.items.length > 0),
-    cancelled,
-    // Bezahlt, aber storniert: Organisatoren müssen erstatten
-    refundsOpen: cancelled.filter(r => r.paymentStatus === 'confirmed').length
+      .map((status) => {
+        const items = requests.filter(r => r.status === status)
+        return {
+          status,
+          items,
+          // Bezahlt, aber nicht (mehr) zugeteilt: Organisatoren müssen erstatten
+          refundsOpen: status === 'allocated' ? 0 : items.filter(r => r.paymentStatus === 'confirmed').length
+        }
+      })
+      .filter(group => group.items.length > 0)
   }
 }))
 
@@ -374,37 +378,16 @@ async function copyAllocatedList() {
       />
 
       <p
-        v-if="!category.groups.length && !category.cancelled.length"
+        v-if="!category.groups.length"
         class="text-sm text-muted"
       >
         Noch keine Anfragen.
       </p>
 
-      <section
+      <UCollapsible
         v-for="group in category.groups"
         :key="group.status"
-        class="space-y-2"
-      >
-        <h4 class="flex items-center gap-2 text-sm text-muted">
-          <UBadge
-            :label="TICKET_STATUS[group.status].label"
-            :color="TICKET_STATUS[group.status].color"
-            variant="subtle"
-            size="sm"
-          />
-          {{ group.items.length }}
-        </h4>
-        <TicketRequestRows
-          :requests="group.items"
-          :dimmed="group.status === 'rejected'"
-          :delivery-line="deliveryLine"
-          :payment-badge="paymentBadge"
-          :actions="actions"
-        />
-      </section>
-
-      <UCollapsible
-        v-if="category.cancelled.length"
+        :default-open="group.status === 'requested'"
         class="flex flex-col gap-2"
       >
         <UButton
@@ -415,22 +398,29 @@ async function copyAllocatedList() {
           class="group justify-between"
           :ui="{ trailingIcon: 'transition-transform duration-200 group-data-[state=open]:rotate-180' }"
         >
-          <span class="flex flex-wrap items-center gap-2">
-            <span class="text-sm text-muted">Storniert ({{ category.cancelled.length }})</span>
-            <UBadge
-              v-if="category.refundsOpen"
-              :label="category.refundsOpen === 1 ? '1 Erstattung offen' : `${category.refundsOpen} Erstattungen offen`"
-              color="warning"
-              variant="subtle"
-              size="sm"
+          <!-- Farbpunkt statt Badge, damit die Gruppentitel ruhig bleiben -->
+          <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+            <UChip
+              standalone
+              inset
+              :color="TICKET_STATUS[group.status].color"
             />
+            <span class="font-medium text-highlighted">
+              {{ TICKET_STATUS[group.status].label }} ({{ group.items.length }})
+            </span>
+            <span
+              v-if="group.refundsOpen"
+              class="text-warning"
+            >
+              {{ group.refundsOpen === 1 ? '1 Erstattung offen' : `${group.refundsOpen} Erstattungen offen` }}
+            </span>
           </span>
         </UButton>
 
         <template #content>
           <TicketRequestRows
-            :requests="category.cancelled"
-            dimmed
+            :requests="group.items"
+            :dimmed="group.status === 'rejected' || group.status === 'cancelled'"
             :delivery-line="deliveryLine"
             :payment-badge="paymentBadge"
             :actions="actions"
