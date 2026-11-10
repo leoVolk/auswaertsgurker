@@ -91,7 +91,9 @@ Schema auf Sicherheitsprobleme.
   Abfrage; dort ausdrücklich auf `requested_by` filtern, weil Organisatoren per RLS alle Anfragen
   lesen. Spalten und Umwandlung teilen sich Ticketseite und „Meine Tickets“
   (`TICKET_ROUND_COLUMNS`/`toTicketRound` usw. in `useTickets.ts`), Bezahlen läuft in beiden über
-  `MyTicketPayment`.
+  `MyTicketPayment`. Stornierte Anfragen, die durch eine neue Anfrage derselben Person für denselben
+  Inhaber überholt sind, blendet `withoutSupersededCancellations` in beiden Ansichten aus (nur
+  Anzeige, die Zeilen bleiben in der DB; offene Zahlung oder hinterlegtes PDF bleiben sichtbar).
 - **Ticket-Hinterlegung:** `ticket_requests.delivery_method` (`pickup` mit Ort/Zeit, `box_office`,
   `digital`). PDFs liegen im privaten Bucket `ticket-files` unter `<club_id>/<request_id>.pdf`;
   Storage-Policies über `can_read_ticket_file` (anfragende Person nur bei zugeteiltem und

@@ -83,6 +83,26 @@ export function isTicketRoundOpen(round: { closedAt: string | null, requestDeadl
   return !round.closedAt && (!round.requestDeadline || Date.now() <= new Date(round.requestDeadline).getTime())
 }
 
+/**
+ * Blendet überholte Stornierungen aus (Liste nach Anfragezeitpunkt sortiert): Hat dieselbe Person
+ * für denselben Inhaber wieder angefragt, verschwindet die stornierte Anfrage, sonst bleibt nur die
+ * letzte. Sichtbar bleiben Stornierungen, um die sich noch jemand kümmern muss (Zahlung, PDF).
+ */
+export function withoutSupersededCancellations(requests: TicketRequest[]) {
+  const key = (r: TicketRequest) => `${r.requestedBy}:${r.holderName.trim().replace(/\s+/g, ' ').toLocaleLowerCase('de-DE')}`
+  const needsAttention = (r: TicketRequest) =>
+    r.ticketFilePath !== null || (r.paymentStatus !== 'open' && r.paymentStatus !== 'refunded')
+
+  const requestedAgain = new Set(requests.filter(r => r.status !== 'cancelled').map(key))
+  const lastCancelled = new Map(requests.filter(r => r.status === 'cancelled').map(r => [key(r), r.id]))
+
+  return requests.filter(r =>
+    r.status !== 'cancelled'
+    || needsAttention(r)
+    || (!requestedAgain.has(key(r)) && lastCancelled.get(key(r)) === r.id)
+  )
+}
+
 /** Alle Ticketabfragen eines Fanclubs für die Übersicht. */
 export async function useClubTicketRounds(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()

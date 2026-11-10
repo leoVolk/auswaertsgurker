@@ -30,9 +30,11 @@ const showError = useErrorToast()
 
 const categoryById = computed(() => new Map(props.categories.map(category => [category.id, category])))
 
-// Stornierte stehen zugeklappt unter den übrigen Anfragen
+// Stornierte stehen zugeklappt unter den übrigen Anfragen, ohne die durch eine neue Anfrage überholten
 const activeRequests = computed(() => props.requests.filter(r => r.status !== 'cancelled'))
-const cancelledRequests = computed(() => props.requests.filter(r => r.status === 'cancelled'))
+const cancelledRequests = computed(() =>
+  withoutSupersededCancellations(props.requests).filter(r => r.status === 'cancelled')
+)
 
 function categoryLabel(request: TicketRequest) {
   const category = categoryById.value.get(request.categoryId)

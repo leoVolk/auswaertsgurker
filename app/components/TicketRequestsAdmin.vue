@@ -139,8 +139,11 @@ function ticketActions(request: TicketRequest): DropdownMenuItem[] {
 // Jede Statusgruppe ist aufklappbar; offen startet nur „Angefragt“, weil dort Entscheidungen anstehen
 const STATUS_ORDER: TicketStatus[] = ['requested', 'waitlist', 'allocated', 'rejected', 'cancelled']
 
+// Über alle Kategorien, damit auch eine neue Anfrage in einer anderen Kategorie die Stornierung überholt
+const listedRequests = computed(() => withoutSupersededCancellations(props.requests))
+
 const categories = computed(() => props.round.categories.map((category) => {
-  const requests = props.requests.filter(r => r.categoryId === category.id)
+  const requests = listedRequests.value.filter(r => r.categoryId === category.id)
   const count = (status: TicketStatus) => requests.filter(r => r.status === status).length
   return {
     ...category,
