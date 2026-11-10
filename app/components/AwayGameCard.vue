@@ -123,14 +123,9 @@ const myTicketBadges = computed(() => {
           class="size-5 shrink-0 text-primary"
         />
         <span class="min-w-0 flex-1">
-          <span class="block font-medium text-highlighted">Ticketabfrage</span>
-          <span class="block text-sm text-muted">
-            {{ ticketMeta }}<template v-if="isOrganizer && ticketRound.openCount"> · {{ ticketRound.openCount }} offen</template>
-          </span>
-          <span
-            v-if="myTicketBadges.length"
-            class="mt-1 flex flex-wrap gap-1"
-          >
+          <!-- Eigene Anfragen direkt neben dem Titel, damit die Zeile nicht höher wird -->
+          <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span class="font-medium text-highlighted">Ticketabfrage</span>
             <UBadge
               v-for="badge in myTicketBadges"
               :key="badge.label"
@@ -139,6 +134,9 @@ const myTicketBadges = computed(() => {
               variant="subtle"
               size="sm"
             />
+          </span>
+          <span class="block text-sm text-muted">
+            {{ ticketMeta }}<template v-if="isOrganizer && ticketRound.openCount"> · {{ ticketRound.openCount }} offen</template>
           </span>
         </span>
         <UIcon

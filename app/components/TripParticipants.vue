@@ -243,7 +243,7 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
             v-if="paymentBadge(participant)"
             :label="paymentBadge(participant)?.label"
             :color="paymentBadge(participant)?.color"
-            variant="subtle"
+            variant="solid"
             size="sm"
             class="shrink-0"
           />

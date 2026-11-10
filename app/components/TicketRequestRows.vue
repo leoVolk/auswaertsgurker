@@ -38,15 +38,16 @@ defineProps<{
           />
           <span class="truncate">{{ deliveryLine(request)?.text }}</span>
         </span>
-        <UBadge
-          v-if="paymentBadge(request)"
-          :label="paymentBadge(request)?.label"
-          :color="paymentBadge(request)?.color"
-          variant="outline"
-          size="sm"
-          class="mt-1"
-        />
       </span>
+      <!-- Zahlung rechts wie in der Mitgliederansicht, damit die Zeile nicht höher wird -->
+      <UBadge
+        v-if="paymentBadge(request)"
+        :label="paymentBadge(request)?.label"
+        :color="paymentBadge(request)?.color"
+        variant="solid"
+        size="sm"
+        class="shrink-0"
+      />
       <UDropdownMenu
         v-if="actions(request).length"
         :items="actions(request)"

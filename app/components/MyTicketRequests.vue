@@ -103,22 +103,23 @@ async function onCancel() {
               {{ categoryLabel(request) }}
               <template v-if="request.holderMembershipNumber"> · Nr. {{ request.holderMembershipNumber }}</template>
             </span>
+          </span>
+          <!-- Zahlung (solid) und Status (subtle) nebeneinander, damit die Zeile nicht höher wird -->
+          <span class="flex shrink-0 items-center gap-1">
             <UBadge
               v-if="paymentBadge(request)"
               :label="paymentBadge(request)?.label"
               :color="paymentBadge(request)?.color"
-              variant="outline"
+              variant="solid"
               size="sm"
-              class="mt-1"
+            />
+            <UBadge
+              :label="TICKET_STATUS[request.status].label"
+              :color="TICKET_STATUS[request.status].color"
+              variant="subtle"
+              size="sm"
             />
           </span>
-          <UBadge
-            :label="TICKET_STATUS[request.status].label"
-            :color="TICKET_STATUS[request.status].color"
-            variant="subtle"
-            size="sm"
-            class="shrink-0"
-          />
           <UDropdownMenu
             v-if="request.status === 'requested' || request.status === 'waitlist'"
             :items="actions(request)"
@@ -170,7 +171,7 @@ async function onCancel() {
               v-if="paymentBadge(request)"
               :label="paymentBadge(request)?.label"
               :color="paymentBadge(request)?.color"
-              variant="outline"
+              variant="solid"
               size="sm"
               class="shrink-0"
             />
