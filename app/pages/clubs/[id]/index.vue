@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { AccordionItem } from '@nuxt/ui'
+import type { AwayMatch } from '#shared/types/openligadb'
+
 const route = useRoute()
 const clubId = computed(() => String(route.params.id))
 
@@ -9,6 +12,21 @@ const { stats } = await useTripStats(clubId)
 const { roundsByMatch } = await useClubTicketRounds(clubId)
 
 useHead({ title: () => club.value?.name ?? 'Fanclub' })
+
+// Nicht terminierte Spiele kommen ins Accordion, damit die Liste kurz bleibt.
+// Ausnahme: Für das Spiel gibt es schon eine Fahrt oder Ticketabfrage, dann bleibt es sichtbar.
+function isPlanned(match: AwayMatch) {
+  return tripsByMatch.value.has(match.matchId) || roundsByMatch.value.has(match.matchId)
+}
+const listedMatches = computed(() => matches.value.filter(m => m.kickoffAt || isPlanned(m)))
+const unscheduledMatches = computed(() => matches.value.filter(m => !m.kickoffAt && !isPlanned(m)))
+
+const unscheduledItems = computed<AccordionItem[]>(() => [{
+  label: unscheduledMatches.value.length === 1
+    ? '1 Spiel mit offenem Termin'
+    : `${unscheduledMatches.value.length} Spiele mit offenem Termin`,
+  icon: 'i-lucide-calendar-clock'
+}])
 </script>
 
 <template>
@@ -56,7 +74,7 @@ useHead({ title: () => club.value?.name ?? 'Fanclub' })
       />
 
       <AwayGameCard
-        v-for="match in matches"
+        v-for="match in listedMatches"
         :key="match.matchId"
         :club-id="club.id"
         :match="match"
@@ -65,6 +83,26 @@ useHead({ title: () => club.value?.name ?? 'Fanclub' })
         :ticket-round="roundsByMatch.get(match.matchId)"
         :is-organizer="isOrganizer"
       />
+
+      <!-- Sind alle kommenden Spiele noch offen, gleich aufgeklappt -->
+      <UAccordion
+        v-if="unscheduledMatches.length"
+        :items="unscheduledItems"
+        :default-value="listedMatches.length ? undefined : '0'"
+        :ui="{ trigger: 'text-base', body: 'space-y-3' }"
+      >
+        <template #body>
+          <AwayGameCard
+            v-for="match in unscheduledMatches"
+            :key="match.matchId"
+            :club-id="club.id"
+            :match="match"
+            :trips="[]"
+            :stats="stats"
+            :is-organizer="isOrganizer"
+          />
+        </template>
+      </UAccordion>
 
       <OpenLigaDbAttribution />
     </section>
@@ -83,31 +121,5 @@ useHead({ title: () => club.value?.name ?? 'Fanclub' })
       title="Noch kein Verein hinterlegt"
       description="Sobald die Organisatoren euren Verein ausgewählt haben, erscheinen hier die Auswärtsspiele."
     />
-
-    <div class="grid gap-2">
-      <UButton
-        :to="`/clubs/${club.id}/members`"
-        :label="isOrganizer ? 'Mitglieder verwalten und einladen' : 'Mitglieder ansehen'"
-        icon="i-lucide-users"
-        trailing-icon="i-lucide-chevron-right"
-        color="neutral"
-        variant="outline"
-        size="lg"
-        block
-        :ui="{ trailingIcon: 'ms-auto' }"
-      />
-      <UButton
-        v-if="isOrganizer"
-        :to="`/clubs/${club.id}/settings`"
-        label="Einstellungen"
-        icon="i-lucide-settings"
-        trailing-icon="i-lucide-chevron-right"
-        color="neutral"
-        variant="outline"
-        size="lg"
-        block
-        :ui="{ trailingIcon: 'ms-auto' }"
-      />
-    </div>
   </div>
 </template>
