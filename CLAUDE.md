@@ -87,6 +87,11 @@ Schema auf Sicherheitsprobleme.
   Warteliste); kein automatisches Nachrücken. Mitglieder schreiben nur über `request_ticket`,
   `update_ticket_request_holder` und `cancel_ticket_request` (nur solange nicht zugeteilt).
   Kategorien mit Anfragen sind per Fremdschlüssel (NO ACTION) gegen Löschen geschützt.
+  „Meine Tickets“ (`/tickets`, `useMyTickets`) sammelt die eigenen Anfragen aller Fanclubs pro
+  Abfrage; dort ausdrücklich auf `requested_by` filtern, weil Organisatoren per RLS alle Anfragen
+  lesen. Spalten und Umwandlung teilen sich Ticketseite und „Meine Tickets“
+  (`TICKET_ROUND_COLUMNS`/`toTicketRound` usw. in `useTickets.ts`), Bezahlen läuft in beiden über
+  `MyTicketPayment`.
 - **Ticket-Hinterlegung:** `ticket_requests.delivery_method` (`pickup` mit Ort/Zeit, `box_office`,
   `digital`). PDFs liegen im privaten Bucket `ticket-files` unter `<club_id>/<request_id>.pdf`;
   Storage-Policies über `can_read_ticket_file` (anfragende Person nur bei zugeteiltem und

@@ -128,6 +128,94 @@ export async function useClubTicketRounds(clubId: MaybeRefOrGetter<string>) {
   return { rounds, roundsByMatch, error, refresh }
 }
 
+// Spalten und Umwandlung gemeinsam für die Ticketseite und „Meine Tickets“
+const TICKET_ROUND_COLUMNS = `
+  id, club_id, request_deadline, max_tickets_per_member, membership_number_required,
+  download_requires_payment, notes, closed_at,
+  away_game:away_games!inner(openligadb_match_id, matchday, opponent_name, kickoff_at, personal_data_purged_at),
+  categories:ticket_categories(id, name, price_cents, quota, sort_order)
+`
+
+const TICKET_REQUEST_COLUMNS = `
+  id, category_id, requested_by, holder_name, holder_membership_number, status,
+  delivery_method, pickup_location, pickup_at, ticket_file_path, payment_status,
+  requester:profiles!inner(display_name)
+`
+
+interface TicketRoundRow {
+  id: string
+  club_id: string
+  request_deadline: string | null
+  max_tickets_per_member: number | null
+  membership_number_required: boolean
+  download_requires_payment: boolean
+  notes: string | null
+  closed_at: string | null
+  away_game: {
+    openligadb_match_id: number
+    matchday: number
+    opponent_name: string
+    kickoff_at: string | null
+    personal_data_purged_at: string | null
+  }
+  categories: { id: string, name: string, price_cents: number, quota: number | null, sort_order: number }[]
+}
+
+interface TicketRequestRow {
+  id: string
+  category_id: string
+  requested_by: string
+  holder_name: string
+  holder_membership_number: string | null
+  status: TicketStatus
+  delivery_method: TicketDeliveryMethod | null
+  pickup_location: string | null
+  pickup_at: string | null
+  ticket_file_path: string | null
+  payment_status: PaymentStatus
+  requester: { display_name: string | null }
+}
+
+function toTicketRound(row: TicketRoundRow): TicketRound {
+  return {
+    id: row.id,
+    clubId: row.club_id,
+    requestDeadline: row.request_deadline,
+    maxTicketsPerMember: row.max_tickets_per_member,
+    membershipNumberRequired: row.membership_number_required,
+    downloadRequiresPayment: row.download_requires_payment,
+    notes: row.notes,
+    closedAt: row.closed_at,
+    personalDataPurged: row.away_game.personal_data_purged_at !== null,
+    awayGame: {
+      matchId: row.away_game.openligadb_match_id,
+      matchday: row.away_game.matchday,
+      opponentName: row.away_game.opponent_name,
+      kickoffAt: row.away_game.kickoff_at
+    },
+    categories: [...row.categories]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(c => ({ id: c.id, name: c.name, priceCents: c.price_cents, quota: c.quota }))
+  }
+}
+
+function toTicketRequest(row: TicketRequestRow): TicketRequest {
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    requestedBy: row.requested_by,
+    requesterName: row.requester.display_name ?? 'Ohne Namen',
+    holderName: row.holder_name,
+    holderMembershipNumber: row.holder_membership_number,
+    status: row.status,
+    deliveryMethod: row.delivery_method,
+    pickupLocation: row.pickup_location,
+    pickupAt: row.pickup_at,
+    ticketFilePath: row.ticket_file_path,
+    paymentStatus: row.payment_status
+  }
+}
+
 /** Eine Ticketabfrage samt Kategorien; `null`, wenn sie nicht existiert oder nicht sichtbar ist. */
 export async function useTicketRound(roundId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
@@ -140,37 +228,11 @@ export async function useTicketRound(roundId: MaybeRefOrGetter<string>) {
 
       const { data, error } = await supabase
         .from('ticket_rounds')
-        .select(`
-          id, club_id, request_deadline, max_tickets_per_member, membership_number_required,
-          download_requires_payment, notes, closed_at,
-          away_game:away_games!inner(openligadb_match_id, matchday, opponent_name, kickoff_at, personal_data_purged_at),
-          categories:ticket_categories(id, name, price_cents, quota, sort_order)
-        `)
+        .select(TICKET_ROUND_COLUMNS)
         .eq('id', id)
         .maybeSingle()
       if (error) throw error
-      if (!data) return null
-
-      return {
-        id: data.id,
-        clubId: data.club_id,
-        requestDeadline: data.request_deadline,
-        maxTicketsPerMember: data.max_tickets_per_member,
-        membershipNumberRequired: data.membership_number_required,
-        downloadRequiresPayment: data.download_requires_payment,
-        notes: data.notes,
-        closedAt: data.closed_at,
-        personalDataPurged: data.away_game.personal_data_purged_at !== null,
-        awayGame: {
-          matchId: data.away_game.openligadb_match_id,
-          matchday: data.away_game.matchday,
-          opponentName: data.away_game.opponent_name,
-          kickoffAt: data.away_game.kickoff_at
-        },
-        categories: [...data.categories]
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map(c => ({ id: c.id, name: c.name, priceCents: c.price_cents, quota: c.quota }))
-      }
+      return data ? toTicketRound(data) : null
     }
   )
 
@@ -189,34 +251,77 @@ export async function useTicketRequests(roundId: MaybeRefOrGetter<string>) {
 
       const { data, error } = await supabase
         .from('ticket_requests')
-        .select(`
-          id, category_id, requested_by, holder_name, holder_membership_number, status,
-          delivery_method, pickup_location, pickup_at, ticket_file_path, payment_status,
-          requester:profiles!inner(display_name)
-        `)
+        .select(TICKET_REQUEST_COLUMNS)
         .eq('round_id', id)
         .order('created_at')
       if (error) throw error
-
-      return data.map(r => ({
-        id: r.id,
-        categoryId: r.category_id,
-        requestedBy: r.requested_by,
-        requesterName: r.requester.display_name ?? 'Ohne Namen',
-        holderName: r.holder_name,
-        holderMembershipNumber: r.holder_membership_number,
-        status: r.status,
-        deliveryMethod: r.delivery_method,
-        pickupLocation: r.pickup_location,
-        pickupAt: r.pickup_at,
-        ticketFilePath: r.ticket_file_path,
-        paymentStatus: r.payment_status
-      }))
+      return data.map(toTicketRequest)
     },
     { default: () => [] }
   )
 
   return { requests, error, refresh }
+}
+
+export interface MyTicketGroup {
+  round: TicketRound
+  club: { id: string, name: string, paypalMe: string | null }
+  /** Eigene Anfragen dieser Abfrage */
+  requests: TicketRequest[]
+  /** Spiel liegt mehr als einen Tag zurück oder die Ticketdaten sind schon gelöscht */
+  past: boolean
+}
+
+const PAST_AFTER_KICKOFF_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Alle eigenen Ticketanfragen über alle Fanclubs, gruppiert nach Ticketabfrage (= Spiel).
+ * Kommende Spiele nach Anstoß aufsteigend (offene Termine zuletzt), vergangene absteigend.
+ */
+export async function useMyTickets() {
+  const supabase = useSupabaseClient()
+  const userId = useCurrentUserId()
+
+  const { data: groups, error, refresh } = await useAsyncData(
+    'my-tickets',
+    async (): Promise<MyTicketGroup[]> => {
+      if (!userId.value) return []
+
+      // Organisatoren dürfen alle Anfragen lesen, deshalb ausdrücklich auf die eigenen filtern
+      const { data, error } = await supabase
+        .from('ticket_rounds')
+        .select(`${TICKET_ROUND_COLUMNS}, club:clubs!inner(id, name, paypal_me), my_requests:ticket_requests!inner(${TICKET_REQUEST_COLUMNS})`)
+        .eq('my_requests.requested_by', userId.value)
+        .order('created_at', { referencedTable: 'my_requests' })
+      if (error) throw error
+
+      const now = Date.now()
+      const groups = data
+        .map((row): MyTicketGroup => {
+          const round = toTicketRound(row)
+          const kickoff = round.awayGame.kickoffAt ? new Date(round.awayGame.kickoffAt).getTime() : null
+          return {
+            round,
+            club: { id: row.club.id, name: row.club.name, paypalMe: row.club.paypal_me },
+            requests: row.my_requests.map(toTicketRequest),
+            past: round.personalDataPurged || (kickoff !== null && kickoff + PAST_AFTER_KICKOFF_MS < now)
+          }
+        })
+        // Nur Stornierte ohne offene Erstattung braucht hier niemand mehr
+        .filter(group => group.requests.some(r => r.status !== 'cancelled' || r.paymentStatus === 'confirmed'))
+
+      const kickoffOf = (group: MyTicketGroup) =>
+        group.round.awayGame.kickoffAt ? new Date(group.round.awayGame.kickoffAt).getTime() : Number.POSITIVE_INFINITY
+      return groups.sort((a, b) => {
+        if (a.past !== b.past) return a.past ? 1 : -1
+        const diff = a.past ? kickoffOf(b) - kickoffOf(a) : kickoffOf(a) - kickoffOf(b)
+        return diff || a.round.awayGame.matchday - b.round.awayGame.matchday
+      })
+    },
+    { default: () => [] }
+  )
+
+  return { groups, error, refresh }
 }
 
 export function useTicketRequestActions() {

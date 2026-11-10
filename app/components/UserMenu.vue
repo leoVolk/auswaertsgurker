@@ -17,6 +17,7 @@ const items = computed<NavigationMenuItem[][]>(() => [
       // Auch auf den Seiten eines Fanclubs hervorheben
       active: route.path === '/' || (route.path.startsWith('/clubs/') && route.path !== '/clubs/new')
     },
+    { label: 'Meine Tickets', icon: 'i-lucide-ticket', to: '/tickets' },
     { label: 'Fanclub gründen', icon: 'i-lucide-plus', to: '/clubs/new' },
     { label: 'Profil & Benachrichtigungen', icon: 'i-lucide-user-cog', to: '/profile' }
   ],
