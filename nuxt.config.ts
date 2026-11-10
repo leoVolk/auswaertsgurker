@@ -47,6 +47,12 @@ export default defineNuxtConfig({
   },
 
   supabase: {
+    // Sitzung bleibt ein Jahr ab der letzten Nutzung erhalten (Modul-Standard: 8 Stunden)
+    cookieOptions: {
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+      secure: true
+    },
     redirectOptions: {
       login: '/login',
       callback: '/confirm',

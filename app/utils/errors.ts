@@ -7,7 +7,12 @@ const AUTH_MESSAGES: Record<string, string> = {
   otp_expired: 'Der Code ist falsch oder abgelaufen.',
   email_address_invalid: 'Diese E-Mail-Adresse wird nicht akzeptiert.',
   signup_disabled: 'Neue Anmeldungen sind gerade deaktiviert.',
-  validation_failed: 'Bitte prüfe deine Eingabe.'
+  validation_failed: 'Bitte prüfe deine Eingabe.',
+  invalid_credentials: 'E-Mail-Adresse oder Passwort stimmen nicht. Du kannst dich auch per Code anmelden.',
+  weak_password: 'Dieses Passwort ist zu unsicher. Wähle bitte ein längeres.',
+  same_password: 'Das ist bereits dein aktuelles Passwort.',
+  // Nur wenn „Secure password change“ in Supabase aktiv ist und der Login älter als 24 Stunden ist
+  reauthentication_needed: 'Aus Sicherheitsgründen musst du dich dafür neu anmelden. Melde dich ab, per Code wieder an und ändere das Passwort direkt danach.'
 }
 
 /** Fehler mit einer Meldung, die direkt in der Oberfläche angezeigt werden darf */

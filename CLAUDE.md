@@ -148,6 +148,15 @@ Schema auf Sicherheitsprobleme.
   `app/utils/schemas.ts`, muss zu „Email OTP Length“ in Supabase passen) und wird per `UPinInput`
   eingegeben; bei vollständiger Eingabe schickt das Formular automatisch ab. `/confirm` ist nur ein Fallback, falls
   die E-Mail-Vorlage noch einen Link enthält. `onboarding.global.ts` erzwingt einen Anzeigenamen.
+- **Passwort (optional):** Registrierung immer per Code (bestätigt die Adresse). Danach kann man im
+  Profil ein Passwort festlegen (`useSetPassword`: `updateUser` + Markierung `has_password` in
+  `user_metadata`, danach `refreshSession`, weil `useSupabaseUser()` die Token-Claims liest).
+  Login-Seite mit Tabs „Code per E-Mail“/„Passwort“; die zuletzt erfolgreiche Methode merkt sich
+  der Cookie `login-method`. Kein Reset-Link per Mail (PKCE-Problem wie beim Magic Link):
+  vergessenes Passwort = per Code anmelden und im Profil neu setzen. `PASSWORD_MIN_LENGTH` muss
+  zu „Minimum password length“ in Supabase passen.
+- **Sitzungsdauer:** `supabase.cookieOptions.maxAge` in `nuxt.config.ts` ist auf ein Jahr gesetzt
+  (Modul-Standard wären 8 Stunden, danach müsste man sich neu anmelden).
 - **Mailversand:** Die Auth-Mails laufen über eigenes SMTP (Strato, Subdomain), eingetragen im
   Supabase-Dashboard. Ohne eigenes SMTP sind im Free-Plan die Vorlagen gesperrt, und der
   eingebaute Versand stellt nur an Team-Mitglieder zu. Die Vorlagen „Magic Link“ und „Confirm

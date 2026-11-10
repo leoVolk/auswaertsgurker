@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+
 useHead({ title: 'Profil' })
 
 const { profile, fetchProfile, updateDisplayName, updateEmailNotifications } = useProfile()
+const user = useSupabaseUser()
+const hasPassword = useHasPassword()
+const setPassword = useSetPassword()
 const push = usePushNotifications()
 const installPrompt = useInstallPrompt()
 const toast = useToast()
@@ -16,6 +21,32 @@ async function saveName(displayName: string) {
   } catch (error) {
     showError(error)
   }
+}
+
+const passwordState = reactive({ password: '' })
+const changingPassword = ref(false)
+
+async function savePassword(event: FormSubmitEvent<NewPasswordForm>) {
+  const hadPassword = hasPassword.value
+  try {
+    await setPassword(event.data.password)
+    passwordState.password = ''
+    // Formular schließen: Passwort-Manager werten das als erfolgreiches Absenden
+    changingPassword.value = false
+    toast.add({
+      title: hadPassword ? 'Passwort geändert' : 'Passwort festgelegt',
+      description: 'Beim nächsten Anmelden kannst du den Tab „Passwort“ nutzen.',
+      color: 'success',
+      icon: 'i-lucide-check'
+    })
+  } catch (error) {
+    showError(error)
+  }
+}
+
+function cancelPasswordChange() {
+  passwordState.password = ''
+  changingPassword.value = false
 }
 
 const emailSaving = ref(false)
@@ -77,6 +108,72 @@ async function install() {
         :initial="profile?.display_name ?? ''"
         submit-label="Speichern"
         :save="saveName"
+      />
+    </UCard>
+
+    <UCard
+      title="Passwort"
+      :description="hasPassword
+        ? 'Du kannst dich mit Passwort oder per Code aus der E-Mail anmelden.'
+        : 'Mit einem Passwort brauchst du beim Anmelden keinen Code aus der E-Mail. Der Code funktioniert trotzdem weiterhin.'"
+    >
+      <UForm
+        v-if="!hasPassword || changingPassword"
+        :schema="newPasswordSchema"
+        :state="passwordState"
+        class="space-y-4"
+        @submit="savePassword"
+      >
+        <!-- Für Passwort-Manager: zu welchem Konto das Passwort gehört -->
+        <UInput
+          :model-value="user?.email ?? ''"
+          type="email"
+          autocomplete="username"
+          readonly
+          tabindex="-1"
+          aria-hidden="true"
+          class="hidden"
+        />
+
+        <UFormField
+          name="password"
+          :label="hasPassword ? 'Neues Passwort' : 'Passwort'"
+          :help="`Mindestens ${PASSWORD_MIN_LENGTH} Zeichen.`"
+        >
+          <PasswordInput
+            v-model="passwordState.password"
+            autocomplete="new-password"
+          />
+        </UFormField>
+
+        <div class="space-y-2">
+          <UButton
+            type="submit"
+            label="Passwort speichern"
+            size="lg"
+            block
+            loading-auto
+          />
+          <UButton
+            v-if="changingPassword"
+            label="Abbrechen"
+            color="neutral"
+            variant="ghost"
+            size="lg"
+            block
+            @click="cancelPasswordChange"
+          />
+        </div>
+      </UForm>
+
+      <UButton
+        v-else
+        label="Passwort ändern"
+        icon="i-lucide-key-round"
+        color="neutral"
+        variant="outline"
+        block
+        @click="changingPassword = true"
       />
     </UCard>
 

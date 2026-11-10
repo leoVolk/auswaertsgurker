@@ -47,6 +47,8 @@ pnpm dev               # http://localhost:3000
    und `https://<domain>/confirm` unter *Redirect URLs* ergänzen.
 4. **Supabase → Authentication → Emails:** Eigenes SMTP muss eingerichtet sein, und die Vorlagen
    „Magic Link“ und „Confirm signup“ müssen `{{ .Token }}` enthalten (Login per Code).
+   Unter *Sign In / Providers → Email* muss *Email OTP Length* auf 8 und *Minimum password length*
+   auf 8 stehen (passend zu `OTP_LENGTH` und `PASSWORD_MIN_LENGTH` in `app/utils/schemas.ts`).
 5. **Täglicher Job prüfen:** `vercel.json` startet täglich um 04:00 UTC `/api/cron/daily`. Er gleicht
    Anstoßzeiten mit OpenLigaDB ab (löst „Anstoßzeit steht fest“ aus), löscht Mitgliedsnummern und
    Ticket-PDFs 30 Tage nach dem Spiel und verschickt liegengebliebene Benachrichtigungen. Manuell:

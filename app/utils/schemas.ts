@@ -17,6 +17,23 @@ export const otpSchema = z.object({
 })
 export type OtpForm = z.output<typeof otpSchema>
 
+// Muss zur Einstellung „Minimum password length“ im Supabase-Projekt passen
+export const PASSWORD_MIN_LENGTH = 8
+
+export const passwordLoginSchema = z.object({
+  email: emailSchema.shape.email,
+  password: z.string().min(1, 'Bitte gib dein Passwort ein.')
+})
+export type PasswordLoginForm = z.output<typeof passwordLoginSchema>
+
+export const newPasswordSchema = z.object({
+  // Supabase speichert höchstens 72 Zeichen (bcrypt)
+  password: z.string()
+    .min(PASSWORD_MIN_LENGTH, `Das Passwort braucht mindestens ${PASSWORD_MIN_LENGTH} Zeichen.`)
+    .max(72, 'Das Passwort darf höchstens 72 Zeichen lang sein.')
+})
+export type NewPasswordForm = z.output<typeof newPasswordSchema>
+
 export const displayNameSchema = z.object({
   displayName: z.string().trim()
     .min(2, 'Dein Name braucht mindestens 2 Zeichen.')
