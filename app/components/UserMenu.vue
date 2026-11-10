@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { NavigationMenuItem } from '@nuxt/ui'
 
 const supabase = useSupabaseClient()
-const userId = useCurrentUserId()
+const user = useSupabaseUser()
+const route = useRoute()
 const { profile, clearProfile } = useProfile()
 const push = usePushNotifications()
 const showError = useErrorToast()
 
-const items = computed<DropdownMenuItem[][]>(() => [
-  [{ type: 'label', label: profile.value?.display_name ?? 'Angemeldet' }],
+const items = computed<NavigationMenuItem[][]>(() => [
   [
-    { label: 'Meine Fanclubs', icon: 'i-lucide-users', to: '/' },
+    {
+      label: 'Meine Fanclubs',
+      icon: 'i-lucide-users',
+      to: '/',
+      // Auch auf den Seiten eines Fanclubs hervorheben
+      active: route.path === '/' || (route.path.startsWith('/clubs/') && route.path !== '/clubs/new')
+    },
     { label: 'Fanclub gründen', icon: 'i-lucide-plus', to: '/clubs/new' },
     { label: 'Profil & Benachrichtigungen', icon: 'i-lucide-user-cog', to: '/profile' }
   ],
@@ -32,16 +38,18 @@ async function signOut() {
 </script>
 
 <template>
-  <UDropdownMenu
-    v-if="userId"
-    :items="items"
-    :content="{ align: 'end' }"
-  >
-    <UButton
-      color="neutral"
-      variant="ghost"
+  <div class="space-y-6">
+    <UUser
+      :name="profile?.display_name ?? 'Angemeldet'"
+      :description="user?.email"
       :avatar="{ alt: profile?.display_name ?? undefined, icon: 'i-lucide-user' }"
-      aria-label="Benutzermenü"
+      size="lg"
     />
-  </UDropdownMenu>
+
+    <UNavigationMenu
+      :items="items"
+      orientation="vertical"
+      class="-mx-2.5"
+    />
+  </div>
 </template>

@@ -112,6 +112,12 @@ Schema auf Sicherheitsprobleme.
   werden gelöscht) → `complete_notifications`. Angestoßen von der App über
   `useNotificationDispatch()` (entprellt, nach Aktionen in den Action-Composables) und vom täglichen
   Cron. `web-push` 4 ist ESM ohne Default-Export: nur benannte Importe.
+- **Navigation:** Hauptmenü über das eingebaute Menü von `UHeader` in `layouts/default.vue`
+  (Hamburger + Vollbild-Overlay, Inhalt in `UserMenu.vue`); die `lg:hidden`-Klassen von Toggle und
+  Menü sind per `ui` überschrieben, damit es auch auf dem Desktop funktioniert. Fanclub-Unterseiten
+  über die klebende, aufklappbare Menüzeile in `ClubHeader.vue` (zwei Root-Knoten, damit `sticky`
+  im Seiten-Container wirkt). Ihre negativen Ränder spiegeln den Innenabstand des Containers in
+  `layouts/default.vue` (`px-4 lg:px-12 py-6 sm:py-10`): Ändert sich der, muss `ClubHeader` mit.
 - **PWA:** `public/manifest.webmanifest`, `public/sw.js` (nur Push und Klick, kein Offline-Cache),
   Icons in `public/icons/` (Platzhalter aus `icon.svg`), Registrierung in `app/plugins/pwa.client.ts`.
   Profil mit E-Mail-Schalter, Push-Opt-in und Installationshinweis unter `/profile`.
