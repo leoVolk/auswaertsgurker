@@ -37,7 +37,7 @@ function composeMessage(group: Notification[], siteUrl: string): Message {
 }
 
 function emailContent(message: Message, clubName: string | undefined, siteUrl: string) {
-  const footer = `Du bekommst diese E-Mail als Mitglied${clubName ? ` von ${clubName}` : ''} bei Auswärtsfahrt. `
+  const footer = `Du bekommst diese E-Mail als Mitglied${clubName ? ` von ${clubName}` : ''} bei Auswärtsgurker. `
     + `E-Mail-Benachrichtigungen kannst du in deinem Profil abbestellen: ${siteUrl}/profile`
 
   const text = [message.title, '', ...message.lines, '', `In der App öffnen: ${message.link}`, '', '--', footer].join('\n')

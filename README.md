@@ -1,4 +1,4 @@
-# Auswärtsfahrt
+# Auswärtsgurker
 
 Web-App für Fußball-Fanclubs: Organisatoren planen Auswärtsfahrten (Bus, Zug, Auto) und verteilen
 Tickets aus dem Fanclub-Kontingent. Mitglieder treten per Einladungslink bei, melden sich zu Fahrten
@@ -36,10 +36,10 @@ pnpm dev               # http://localhost:3000
    | `NUXT_SUPABASE_SECRET_KEY` | Secret Key aus Supabase (nur serverseitig) |
    | `NUXT_CRON_SECRET` | Zufälliger Wert, z. B. `openssl rand -hex 32` |
    | `CRON_SECRET` | Derselbe Wert wie `NUXT_CRON_SECRET` (Vercel sendet ihn beim Cron-Aufruf mit) |
-   | `NUXT_PUBLIC_SITE_URL` | Produktions-URL, z. B. `https://auswaertsfahrt.example` (für Links in Mails/Push) |
+   | `NUXT_PUBLIC_SITE_URL` | Produktions-URL, z. B. `https://auswaertsgurker.example` (für Links in Mails/Push) |
    | `NUXT_SMTP_HOST`, `NUXT_SMTP_PORT` | z. B. `smtp.strato.de`, `465` |
    | `NUXT_SMTP_USER`, `NUXT_SMTP_PASS` | Zugang des Postfachs, über das auch Supabase die Login-Codes schickt |
-   | `NUXT_SMTP_FROM` | Absender, z. B. `Auswärtsfahrt <login@deine-subdomain.de>` |
+   | `NUXT_SMTP_FROM` | Absender, z. B. `Auswärtsgurker <login@deine-subdomain.de>` |
    | `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `NUXT_VAPID_PRIVATE_KEY` | Schlüsselpaar für Web-Push (`pnpm exec web-push generate-vapid-keys`) |
    | `NUXT_VAPID_SUBJECT` | Optional, z. B. `mailto:login@deine-subdomain.de` (sonst Absender bzw. Site-URL) |
 

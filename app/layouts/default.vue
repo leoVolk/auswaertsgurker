@@ -11,7 +11,7 @@
             name="i-lucide-bus"
             class="size-5 text-primary"
           />
-          Auswärtsfahrt
+          Auswärtsgurker
         </span>
       </template>
 

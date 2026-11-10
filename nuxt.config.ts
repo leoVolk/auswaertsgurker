@@ -29,7 +29,7 @@ export default defineNuxtConfig({
     vapidPrivateKey: '',
     vapidSubject: '',
     public: {
-      // Basis-URL für Links in E-Mails und Push, z. B. https://auswaertsfahrt.example
+      // Basis-URL für Links in E-Mails und Push, z. B. https://auswaertsgurker.example
       siteUrl: '',
       vapidPublicKey: ''
     }

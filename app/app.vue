@@ -11,10 +11,10 @@ useHead({
   ],
   meta: [
     { name: 'theme-color', content: '#0084d1' },
-    { name: 'apple-mobile-web-app-title', content: 'Auswärtsfahrt' },
+    { name: 'apple-mobile-web-app-title', content: 'Auswärtsgurker' },
     { name: 'mobile-web-app-capable', content: 'yes' }
   ],
-  titleTemplate: title => (title ? `${title} · Auswärtsfahrt` : 'Auswärtsfahrt')
+  titleTemplate: title => (title ? `${title} · Auswärtsgurker` : 'Auswärtsgurker')
 })
 
 useSeoMeta({

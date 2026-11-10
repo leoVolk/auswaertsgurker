@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Auswärtsfahrt – Projektbriefing
+# Auswärtsgurker – Projektbriefing
 
 ## Was wir bauen
 Web-App (PWA) für Fußball-Fanclubs: Organisatoren planen Auswärtsfahrten (Bus, Zug, Autos),

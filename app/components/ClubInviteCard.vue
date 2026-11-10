@@ -14,7 +14,7 @@ onMounted(() => {
   canShare.value = typeof navigator.share === 'function'
 })
 
-const shareText = computed(() => `Komm in unseren Fanclub „${props.clubName}“ bei Auswärtsfahrt:`)
+const shareText = computed(() => `Komm in unseren Fanclub „${props.clubName}“ bei Auswärtsgurker:`)
 const whatsappUrl = computed(() =>
   `https://wa.me/?text=${encodeURIComponent(`${shareText.value} ${link.value}`)}`
 )
