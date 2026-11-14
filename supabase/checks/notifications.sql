@@ -69,27 +69,24 @@ begin
   select count(*) into n from public.notifications where kind = 'waitlist_promoted' and user_id = u2 and title = 'Du bist nachgerückt';
   if n <> 1 then raise exception '3: % statt 1', n; end if;
 
-  -- 4) Ticket zugeteilt, PDF da, Abholung festgelegt
+  -- 4) Ticket zugeteilt, PDF da
   set local role authenticated;
   perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
-  req_u3 := public.request_ticket(cat, 'Inhaber Drei', null);
+  req_u3 := public.request_ticket(cat, 'Inhaber Drei', 'M-3');
   perform set_config('request.jwt.claims', json_build_object('sub', orga, 'role', 'authenticated')::text, true);
   perform public.set_ticket_request_status(req_u3, 'allocated');
   insert into storage.objects (bucket_id, name, owner_id) values ('ticket-files', club || '/' || req_u3 || '.pdf', orga);
   perform public.attach_ticket_file(req_u3);
-  perform public.set_ticket_delivery(array[req_u3], 'pickup', 'Am Bus', '2026-11-21 08:00:00+00');
   reset role;
   select count(*) into n from public.notifications where user_id = u3 and kind = 'ticket_allocated';
   if n <> 1 then raise exception '4a: zugeteilt %', n; end if;
   select count(*) into n from public.notifications where user_id = u3 and kind = 'ticket_delivery' and title = 'Dein Ticket ist da';
   if n <> 1 then raise exception '4b: PDF %', n; end if;
-  select count(*) into n from public.notifications where user_id = u3 and kind = 'ticket_delivery' and body like '%Abholung Am Bus, Sa., 21.11., 09:00 Uhr%';
-  if n <> 1 then raise exception '4c: Abholung %', n; end if;
 
   -- 5) Abgelehnt
   set local role authenticated;
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
-  req_u1 := public.request_ticket(cat, 'Inhaber Eins', null);
+  req_u1 := public.request_ticket(cat, 'Inhaber Eins', 'M-1');
   perform set_config('request.jwt.claims', json_build_object('sub', orga, 'role', 'authenticated')::text, true);
   perform public.set_ticket_request_status(req_u1, 'rejected');
   reset role;

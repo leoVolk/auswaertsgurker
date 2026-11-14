@@ -62,20 +62,20 @@ begin
 
   -- 1) u1 fragt zwei Tickets an, das dritte überschreitet den Höchstwert
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
-  r_u1_1 := public.request_ticket(cat_a, 'Max Muster', null);
+  r_u1_1 := public.request_ticket(cat_a, 'Max Muster', 'M-11');
   r_u1_2 := public.request_ticket(cat_a, 'Erika Muster', '12345');
   failed := false;
   begin
-    perform public.request_ticket(cat_a, 'Dritte Person', null);
+    perform public.request_ticket(cat_a, 'Dritte Person', 'M-13');
   exception when others then failed := true;
   end;
   if not failed then raise exception '1: Höchstwert pro Mitglied nicht durchgesetzt'; end if;
 
   -- 2) u2 und u3 fragen je ein Ticket an
   perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
-  r_u2 := public.request_ticket(cat_a, 'Zweiter', null);
+  r_u2 := public.request_ticket(cat_a, 'Zweiter', 'M-21');
   perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
-  r_u3 := public.request_ticket(cat_a, 'Dritter', null);
+  r_u3 := public.request_ticket(cat_a, 'Dritter', 'M-31');
 
   -- 3) RLS: u3 sieht nur die eigene Anfrage
   select count(*) into n from public.ticket_requests;
@@ -134,8 +134,7 @@ begin
   end;
   if not failed then raise exception '10: Zuteilung ohne Kontingent möglich'; end if;
 
-  -- 11) Mitgliedsnummer erforderlich
-  update public.ticket_rounds set membership_number_required = true where id = round;
+  -- 11) Mitgliedsnummer immer erforderlich (anfragen und Inhaber ändern)
   perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
   failed := false;
   begin
@@ -144,6 +143,12 @@ begin
   end;
   if not failed then raise exception '11a: Anfrage ohne Pflicht-Mitgliedsnummer möglich'; end if;
   r_u2_b := public.request_ticket(cat_b, 'Mit Nummer', 'M-42');
+  failed := false;
+  begin
+    perform public.update_ticket_request_holder(r_u2_b, 'Ohne Nummer', null);
+  exception when others then failed := true;
+  end;
+  if not failed then raise exception '11b: Inhaber ohne Mitgliedsnummer änderbar'; end if;
 
   -- 12) Inhaber ändern: vor Zuteilung ja, danach nur Organisator
   perform public.update_ticket_request_holder(r_u2_b, 'Neuer Name', 'M-43');
@@ -186,6 +191,30 @@ begin
   reset role;
   select count(*) into n from public.ticket_requests where round_id = round;
   if n <> 0 then raise exception '15: % Anfragen nach dem Löschen übrig', n; end if;
+
+  -- 16) Eigene Mitgliedsnummer: speichern, ändern, nur selbst lesbar, leer = löschen
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+  perform public.set_my_membership_number('  4711 ');
+  perform public.set_my_membership_number('4712');
+  select count(*) into n from public.membership_numbers where user_id = u1 and membership_number = '4712';
+  if n <> 1 then raise exception '16a: Nummer nicht gespeichert'; end if;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+  select count(*) into n from public.membership_numbers;
+  if n <> 0 then raise exception '16b: Fremde Mitgliedsnummer sichtbar'; end if;
+  failed := false;
+  begin
+    insert into public.membership_numbers (user_id, membership_number) values (u2, '1');
+  exception when insufficient_privilege then failed := true;
+  end;
+  if not failed then raise exception '16c: Direktes Schreiben möglich'; end if;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+  perform public.set_my_membership_number(' ');
+  select count(*) into n from public.membership_numbers where user_id = u1;
+  if n <> 0 then raise exception '16d: Leere Eingabe hat die Nummer nicht gelöscht'; end if;
+  reset role;
 end;
 $$;
 

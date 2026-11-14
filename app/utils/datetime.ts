@@ -16,6 +16,13 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
   month: '2-digit'
 })
 
+const fullDateFormat = new Intl.DateTimeFormat('de-DE', {
+  timeZone: TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric'
+})
+
 const partsFormat = new Intl.DateTimeFormat('en-US', {
   timeZone: TIME_ZONE,
   hourCycle: 'h23',
@@ -36,6 +43,11 @@ export function formatDateTime(iso: string) {
 /** z. B. „21.11.“ */
 export function formatDayMonth(iso: string) {
   return `${dateFormat.format(new Date(iso))}.`
+}
+
+/** z. B. „21.11.2026“ */
+export function formatDate(iso: string) {
+  return fullDateFormat.format(new Date(iso))
 }
 
 export function formatPrice(cents: number) {

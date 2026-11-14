@@ -18,7 +18,6 @@ interface CategoryState {
 const state = reactive({
   requestDeadline: toBerlinInput(props.initial?.requestDeadline),
   maxTicketsPerMember: props.initial?.maxTicketsPerMember ?? null,
-  membershipNumberRequired: props.initial?.membershipNumberRequired ?? false,
   downloadRequiresPayment: props.initial?.downloadRequiresPayment ?? false,
   notes: props.initial?.notes ?? '',
   categories: (props.initial?.categories.map(category => ({
@@ -42,7 +41,6 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
   await props.save({
     requestDeadline: data.requestDeadline ? fromBerlinInput(data.requestDeadline) : null,
     maxTicketsPerMember: data.maxTicketsPerMember ?? null,
-    membershipNumberRequired: data.membershipNumberRequired,
     downloadRequiresPayment: data.downloadRequiresPayment,
     notes: data.notes || null,
     categories: data.categories.map(category => ({
@@ -87,14 +85,6 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
         placeholder="unbegrenzt"
         size="lg"
         class="w-full"
-      />
-    </UFormField>
-
-    <UFormField name="membershipNumberRequired">
-      <USwitch
-        v-model="state.membershipNumberRequired"
-        label="Mitgliedsnummer erforderlich"
-        description="Jede Anfrage braucht dann die Vereinsmitgliedsnummer des Inhabers."
       />
     </UFormField>
 

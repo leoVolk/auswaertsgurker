@@ -142,9 +142,8 @@ async function onDelete() {
 
     <TripParticipants
       v-else
-      :trip-id="trip.id"
-      :capacity="trip.capacity"
-      :price-cents="trip.priceCents"
+      :trip="trip"
+      :club-name="club.name"
       @changed="refreshStats"
     />
 

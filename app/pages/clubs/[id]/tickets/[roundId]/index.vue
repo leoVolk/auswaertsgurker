@@ -136,7 +136,6 @@ async function onDelete() {
         <MyTicketRequests
           :requests="myRequests"
           :categories="round.categories"
-          :membership-number-required="round.membershipNumberRequired"
           :download-requires-payment="round.downloadRequiresPayment"
           :purged="round.personalDataPurged"
           @changed="refreshRequests"
@@ -243,6 +242,7 @@ async function onDelete() {
       v-else
       :round="round"
       :requests="requests"
+      :club-name="club.name"
       @changed="refreshAll"
     />
 

@@ -4,16 +4,17 @@ import type { TicketRound } from '~/composables/useTickets'
 
 const props = defineProps<{
   round: TicketRound
+  /** Für die erste Anfrage der eigene Name, danach leer (weitere Tickets sind meist für andere) */
   defaultHolderName: string
 }>()
 
 const emit = defineEmits<{ requested: [] }>()
 
 const { requestTicket } = useTicketRequestActions()
+const { profile } = useProfile()
+const { membershipNumber: ownNumber, save: saveOwnNumber } = await useMembershipNumber()
 const toast = useToast()
 const showError = useErrorToast()
-
-const schema = computed(() => ticketHolderSchema(props.round.membershipNumberRequired))
 
 const categoryItems = computed(() => props.round.categories.map(category => ({
   value: category.id,
@@ -24,12 +25,33 @@ const categoryItems = computed(() => props.round.categories.map(category => ({
 const state = reactive({
   categoryId: props.round.categories[0]?.id ?? '',
   holderName: props.defaultHolderName,
-  membershipNumber: ''
+  membershipNumber: props.defaultHolderName ? ownNumber.value ?? '' : '',
+  remember: true
 })
+
+const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('de-DE')
+const isForMe = computed(() =>
+  !!profile.value?.display_name && normalize(state.holderName) === normalize(profile.value.display_name)
+)
+
+// Eigene Nummer eintragen, sobald man den eigenen Namen als Inhaber wählt
+watch(isForMe, (forMe) => {
+  if (forMe && !state.membershipNumber && ownNumber.value) {
+    state.membershipNumber = ownNumber.value
+  }
+})
+
+// Speichern anbieten, wenn man für sich selbst anfragt und die Nummer neu oder anders ist
+const canRemember = computed(() =>
+  isForMe.value && state.membershipNumber.trim() !== '' && state.membershipNumber.trim() !== ownNumber.value
+)
 
 async function onSubmit(event: FormSubmitEvent<TicketHolderForm>) {
   try {
-    await requestTicket(state.categoryId, event.data.holderName, event.data.membershipNumber || null)
+    await requestTicket(state.categoryId, event.data.holderName, event.data.membershipNumber)
+    if (canRemember.value && state.remember) {
+      await saveOwnNumber(event.data.membershipNumber).catch(showError)
+    }
     toast.add({
       title: 'Ticket angefragt',
       description: 'Du bekommst Bescheid, wenn die Organisatoren zugeteilt haben.',
@@ -48,7 +70,7 @@ async function onSubmit(event: FormSubmitEvent<TicketHolderForm>) {
 
 <template>
   <UForm
-    :schema="schema"
+    :schema="ticketHolderSchema"
     :state="state"
     class="space-y-4"
     @submit="onSubmit"
@@ -67,7 +89,13 @@ async function onSubmit(event: FormSubmitEvent<TicketHolderForm>) {
     <TicketHolderFields
       v-model:holder-name="state.holderName"
       v-model:membership-number="state.membershipNumber"
-      :membership-number-required="round.membershipNumberRequired"
+    />
+
+    <UCheckbox
+      v-if="canRemember"
+      v-model="state.remember"
+      :label="ownNumber ? 'Gespeicherte Nummer im Profil ersetzen' : 'Nummer in meinem Profil speichern'"
+      description="Dann ist sie bei deiner nächsten Anfrage schon eingetragen."
     />
 
     <UButton

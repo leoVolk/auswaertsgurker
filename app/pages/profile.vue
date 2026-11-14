@@ -13,6 +13,25 @@ const toast = useToast()
 const showError = useErrorToast()
 
 await fetchProfile()
+const { membershipNumber, save: saveMembershipNumber } = await useMembershipNumber()
+
+const membershipState = reactive({ membershipNumber: membershipNumber.value ?? '' })
+watch(membershipNumber, (value) => {
+  membershipState.membershipNumber = value ?? ''
+})
+
+async function onSaveMembershipNumber(event: FormSubmitEvent<MembershipNumberForm>) {
+  try {
+    await saveMembershipNumber(event.data.membershipNumber)
+    toast.add({
+      title: event.data.membershipNumber ? 'Mitgliedsnummer gespeichert' : 'Mitgliedsnummer gelöscht',
+      color: 'success',
+      icon: 'i-lucide-check'
+    })
+  } catch (error) {
+    showError(error)
+  }
+}
 
 async function saveName(displayName: string) {
   try {
@@ -109,6 +128,37 @@ async function install() {
         submit-label="Speichern"
         :save="saveName"
       />
+    </UCard>
+
+    <UCard
+      title="Vereinsmitgliedsnummer"
+      description="Wird bei Ticketanfragen für dich automatisch eingetragen. Nur du siehst sie hier."
+    >
+      <UForm
+        :schema="membershipNumberFormSchema"
+        :state="membershipState"
+        class="space-y-4"
+        @submit="onSaveMembershipNumber"
+      >
+        <UFormField
+          name="membershipNumber"
+          label="Mitgliedsnummer"
+          help="Leer lassen und speichern, um sie zu löschen."
+        >
+          <UInput
+            v-model="membershipState.membershipNumber"
+            size="lg"
+            class="w-full"
+          />
+        </UFormField>
+        <UButton
+          type="submit"
+          label="Speichern"
+          size="lg"
+          block
+          loading-auto
+        />
+      </UForm>
     </UCard>
 
     <UCard

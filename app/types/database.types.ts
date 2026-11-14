@@ -205,6 +205,32 @@ export type Database = {
           },
         ]
       }
+      membership_numbers: {
+        Row: {
+          membership_number: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          membership_number: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          membership_number?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_numbers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           attempts: number
@@ -373,17 +399,12 @@ export type Database = {
           category_id: string
           club_id: string
           created_at: string
-          delivery_method:
-            | Database["public"]["Enums"]["ticket_delivery_method"]
-            | null
           holder_membership_number: string | null
           holder_name: string
           id: string
           payment_amount_cents: number | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           payment_status_changed_at: string | null
-          pickup_at: string | null
-          pickup_location: string | null
           requested_by: string
           round_id: string
           status: Database["public"]["Enums"]["ticket_status"]
@@ -395,17 +416,12 @@ export type Database = {
           category_id: string
           club_id: string
           created_at?: string
-          delivery_method?:
-            | Database["public"]["Enums"]["ticket_delivery_method"]
-            | null
           holder_membership_number?: string | null
           holder_name: string
           id?: string
           payment_amount_cents?: number | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           payment_status_changed_at?: string | null
-          pickup_at?: string | null
-          pickup_location?: string | null
           requested_by: string
           round_id: string
           status?: Database["public"]["Enums"]["ticket_status"]
@@ -417,17 +433,12 @@ export type Database = {
           category_id?: string
           club_id?: string
           created_at?: string
-          delivery_method?:
-            | Database["public"]["Enums"]["ticket_delivery_method"]
-            | null
           holder_membership_number?: string | null
           holder_name?: string
           id?: string
           payment_amount_cents?: number | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           payment_status_changed_at?: string | null
-          pickup_at?: string | null
-          pickup_location?: string | null
           requested_by?: string
           round_id?: string
           status?: Database["public"]["Enums"]["ticket_status"]
@@ -469,7 +480,6 @@ export type Database = {
           download_requires_payment: boolean
           id: string
           max_tickets_per_member: number | null
-          membership_number_required: boolean
           notes: string | null
           request_deadline: string | null
         }
@@ -482,7 +492,6 @@ export type Database = {
           download_requires_payment?: boolean
           id?: string
           max_tickets_per_member?: number | null
-          membership_number_required?: boolean
           notes?: string | null
           request_deadline?: string | null
         }
@@ -495,7 +504,6 @@ export type Database = {
           download_requires_payment?: boolean
           id?: string
           max_tickets_per_member?: number | null
-          membership_number_required?: boolean
           notes?: string | null
           request_deadline?: string | null
         }
@@ -795,6 +803,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_my_membership_number: {
+        Args: { p_membership_number: string }
+        Returns: undefined
+      }
       set_payment_status: {
         Args: {
           p_status: Database["public"]["Enums"]["payment_status"]
@@ -802,15 +814,6 @@ export type Database = {
           p_trip_registration_ids?: string[]
         }
         Returns: number
-      }
-      set_ticket_delivery: {
-        Args: {
-          p_method: Database["public"]["Enums"]["ticket_delivery_method"]
-          p_pickup_at: string
-          p_pickup_location: string
-          p_request_ids: string[]
-        }
-        Returns: string[]
       }
       set_ticket_request_status: {
         Args: {
@@ -842,7 +845,6 @@ export type Database = {
       notification_status: "pending" | "sending" | "sent" | "failed"
       payment_status: "open" | "reported" | "confirmed" | "refunded"
       registration_status: "requested" | "confirmed" | "waitlist" | "cancelled"
-      ticket_delivery_method: "pickup" | "box_office" | "digital"
       ticket_status:
         | "requested"
         | "allocated"
@@ -994,7 +996,6 @@ export const Constants = {
       notification_status: ["pending", "sending", "sent", "failed"],
       payment_status: ["open", "reported", "confirmed", "refunded"],
       registration_status: ["requested", "confirmed", "waitlist", "cancelled"],
-      ticket_delivery_method: ["pickup", "box_office", "digital"],
       ticket_status: [
         "requested",
         "allocated",

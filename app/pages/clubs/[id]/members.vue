@@ -2,6 +2,7 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { ClubRole } from '~/composables/useClubs'
 import type { ClubMember } from '~/composables/useClubMembers'
+import type { ExportList } from '~/utils/exportList'
 
 const route = useRoute()
 const clubId = computed(() => String(route.params.id))
@@ -35,6 +36,22 @@ async function onLeave() {
 }
 
 useHead({ title: () => (club.value ? `Mitglieder · ${club.value.name}` : 'Mitglieder') })
+
+function memberExportList(): ExportList<ClubMember> {
+  const name = club.value?.name ?? 'Fanclub'
+  return {
+    title: `Mitglieder ${name}`,
+    subtitle: `${members.value.length} Mitglieder`,
+    fileName: exportFileName('mitglieder', name),
+    rows: members.value,
+    columns: [
+      { header: 'Name', value: m => m.displayName, width: 24 },
+      { header: 'Rolle', value: m => ROLE_LABELS[m.role], width: 14 },
+      { header: 'Mitglied seit', value: m => formatDate(m.joinedAt), width: 14 }
+    ]
+  }
+}
+const exportItems = computed(() => exportMenuItems(memberExportList, error => showError(error, 'Der Export hat nicht geklappt.')))
 
 async function changeRole(member: ClubMember, role: ClubRole) {
   try {
@@ -126,10 +143,25 @@ function memberActions(member: ClubMember): DropdownMenuItem[][] {
       :club-name="club.name"
     />
 
-    <UCard
-      :title="`Mitglieder (${members.length})`"
-      :ui="{ body: 'p-0 sm:p-0' }"
-    >
+    <UCard :ui="{ header: 'flex items-center justify-between gap-3', body: 'p-0 sm:p-0' }">
+      <template #header>
+        <h2 class="font-semibold text-highlighted">
+          Mitglieder ({{ members.length }})
+        </h2>
+        <UDropdownMenu
+          v-if="isOrganizer"
+          :items="exportItems"
+          :content="{ align: 'end' }"
+        >
+          <UButton
+            label="Liste"
+            icon="i-lucide-download"
+            color="neutral"
+            variant="outline"
+            size="sm"
+          />
+        </UDropdownMenu>
+      </template>
       <ul class="divide-y divide-default">
         <li
           v-for="member in members"

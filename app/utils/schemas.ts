@@ -88,7 +88,6 @@ export const ticketRoundFormSchema = z.object({
     .min(1, 'Mindestens 1 Ticket.')
     .max(20, 'Höchstens 20 Tickets.')
     .nullish(),
-  membershipNumberRequired: z.boolean(),
   downloadRequiresPayment: z.boolean(),
   notes: z.string().trim().max(2000, 'Höchstens 2000 Zeichen.'),
   categories: z.array(z.object({
@@ -105,29 +104,24 @@ export const ticketRoundFormSchema = z.object({
 })
 export type TicketRoundForm = z.output<typeof ticketRoundFormSchema>
 
-export function ticketHolderSchema(membershipNumberRequired: boolean) {
-  const number = z.string().trim().max(40, 'Höchstens 40 Zeichen.')
-  return z.object({
-    holderName: z.string().trim()
-      .min(2, 'Bitte gib den Namen des Inhabers ein.')
-      .max(80, 'Höchstens 80 Zeichen.'),
-    membershipNumber: membershipNumberRequired
-      ? number.min(1, 'Für diese Abfrage brauchst du die Mitgliedsnummer.')
-      : number
-  })
-}
-export type TicketHolderForm = z.output<ReturnType<typeof ticketHolderSchema>>
+// Vereinsmitgliedsnummer; für jede Ticketanfrage Pflicht
+export const membershipNumberSchema = z.string().trim()
+  .min(1, 'Bitte gib die Mitgliedsnummer ein.')
+  .max(40, 'Höchstens 40 Zeichen.')
 
-export const ticketDeliverySchema = z.object({
-  method: z.enum(Constants.public.Enums.ticket_delivery_method, 'Bitte wähle, wie die Tickets hinterlegt werden.'),
-  pickupLocation: z.string().trim().max(200, 'Höchstens 200 Zeichen.'),
-  // Wert aus <input type="datetime-local">, leer = keine feste Zeit
-  pickupAt: z.string()
-}).refine(
-  delivery => delivery.method !== 'pickup' || delivery.pickupLocation.length > 0,
-  { message: 'Bitte gib an, wo die Tickets abgeholt werden.', path: ['pickupLocation'] }
-)
-export type TicketDeliveryForm = z.output<typeof ticketDeliverySchema>
+export const ticketHolderSchema = z.object({
+  holderName: z.string().trim()
+    .min(2, 'Bitte gib den Namen des Inhabers ein.')
+    .max(80, 'Höchstens 80 Zeichen.'),
+  membershipNumber: membershipNumberSchema
+})
+export type TicketHolderForm = z.output<typeof ticketHolderSchema>
+
+export const membershipNumberFormSchema = z.object({
+  // Leer = gespeicherte Nummer löschen
+  membershipNumber: z.string().trim().max(40, 'Höchstens 40 Zeichen.')
+})
+export type MembershipNumberForm = z.output<typeof membershipNumberFormSchema>
 
 export function isUuid(value: string) {
   return z.uuid().safeParse(value).success

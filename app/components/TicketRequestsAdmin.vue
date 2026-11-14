@@ -2,16 +2,18 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { PaymentStatus } from '~/composables/usePayments'
 import type { TicketCategory, TicketRequest, TicketRound, TicketStatus } from '~/composables/useTickets'
+import type { ExportList } from '~/utils/exportList'
 
 const props = defineProps<{
   round: TicketRound
   requests: TicketRequest[]
+  clubName: string
 }>()
 
 const emit = defineEmits<{ changed: [] }>()
 
 const { setStatus, cancelRequest, autoAllocate } = useTicketRequestActions()
-const { removeTicketFile } = useTicketDeliveryActions(() => props.round.clubId)
+const { removeTicketFile } = useTicketFileActions(() => props.round.clubId)
 const openTicketFile = useOpenTicketFile()
 const toast = useToast()
 const showError = useErrorToast()
@@ -53,15 +55,6 @@ async function onConfirmReported() {
   )
 }
 
-// Hinterlegung festlegen (einzeln oder für alle zugeteilten Tickets)
-const deliveryTargets = ref<TicketRequest[]>([])
-const deliveryOpen = ref(false)
-
-function openDelivery(targets: TicketRequest[]) {
-  deliveryTargets.value = targets
-  deliveryOpen.value = true
-}
-
 // PDF-Upload (einzeln oder gesammelt)
 const uploadTarget = ref<TicketRequest | null>(null)
 const uploadOpen = ref(false)
@@ -71,46 +64,26 @@ function openUpload(target: TicketRequest | null) {
   uploadOpen.value = true
 }
 
-/** Kurzinfo zur Hinterlegung eines Tickets in der Liste */
+/** Stand des Ticket-PDFs in der Liste (Tickets kommen immer als PDF) */
 function deliveryLine(request: TicketRequest) {
   if (request.status !== 'allocated') {
     return request.ticketFilePath
       ? { icon: 'i-lucide-file-warning', text: 'PDF noch hinterlegt', class: 'text-warning' }
       : null
   }
-  switch (request.deliveryMethod) {
-    case 'digital':
-      return request.ticketFilePath
-        ? { icon: 'i-lucide-file-check', text: 'PDF hinterlegt', class: 'text-success' }
-        : { icon: 'i-lucide-file-x', text: 'PDF fehlt', class: 'text-warning' }
-    case 'pickup':
-      return {
-        icon: 'i-lucide-map-pin',
-        text: `Abholung: ${request.pickupLocation}${request.pickupAt ? `, ${formatDateTime(request.pickupAt)}` : ''}`,
-        class: 'text-muted'
-      }
-    case 'box_office':
-      return { icon: 'i-lucide-store', text: 'Gästekasse', class: 'text-muted' }
-    default:
-      return { icon: 'i-lucide-circle-dashed', text: 'Hinterlegung offen', class: 'text-muted' }
-  }
+  return request.ticketFilePath
+    ? { icon: 'i-lucide-file-check', text: 'PDF hinterlegt', class: 'text-success' }
+    : { icon: 'i-lucide-file-x', text: 'PDF fehlt', class: 'text-warning' }
 }
 
 function ticketActions(request: TicketRequest): DropdownMenuItem[] {
   const items: DropdownMenuItem[] = []
   if (request.status === 'allocated') {
-    items.push(
-      {
-        label: request.ticketFilePath ? 'PDF ersetzen' : 'PDF hochladen',
-        icon: 'i-lucide-file-up',
-        onSelect: () => openUpload(request)
-      },
-      {
-        label: 'Hinterlegung festlegen',
-        icon: 'i-lucide-package-check',
-        onSelect: () => openDelivery([request])
-      }
-    )
+    items.push({
+      label: request.ticketFilePath ? 'PDF ersetzen' : 'PDF hochladen',
+      icon: 'i-lucide-file-up',
+      onSelect: () => openUpload(request)
+    })
   }
   if (request.ticketFilePath) {
     const path = request.ticketFilePath
@@ -287,16 +260,42 @@ async function copyAllocatedList() {
   }
 }
 
-// Seltene Werkzeuge gesammelt im Menü „Aktionen“
-const toolItems = computed<DropdownMenuItem[][]>(() => [[
-  { label: 'Liste kopieren', icon: 'i-lucide-clipboard-list', onSelect: copyAllocatedList },
-  ...(allocatedRequests.value.length
-    ? [
-        { label: 'PDFs hochladen', icon: 'i-lucide-file-up', onSelect: () => openUpload(null) },
-        { label: 'Hinterlegung für alle', icon: 'i-lucide-package-check', onSelect: () => openDelivery(allocatedRequests.value) }
-      ]
-    : [])
-]])
+// Export aller Anfragen (ohne stornierte), sortiert nach Kategorie und Status
+function ticketExportList(): ExportList<TicketRequest> {
+  const categoryOrder = new Map(props.round.categories.map((category, index) => [category.id, index]))
+  const categoryName = new Map(props.round.categories.map(category => [category.id, category.name]))
+  const rows = props.requests
+    .filter(request => request.status !== 'cancelled')
+    .sort((a, b) => (categoryOrder.get(a.categoryId) ?? 0) - (categoryOrder.get(b.categoryId) ?? 0)
+      || STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status))
+  const game = `${props.round.awayGame.matchday}. Spieltag bei ${props.round.awayGame.opponentName}`
+
+  return {
+    title: `Tickets bei ${props.round.awayGame.opponentName}`,
+    subtitle: `${props.clubName} · ${game}`,
+    fileName: exportFileName('tickets', props.round.awayGame.matchday, 'spieltag', props.round.awayGame.opponentName),
+    rows,
+    columns: [
+      { header: 'Kategorie', value: r => categoryName.get(r.categoryId), width: 14 },
+      { header: 'Inhaber', value: r => r.holderName, width: 24 },
+      { header: 'Mitgliedsnummer', value: r => r.holderMembershipNumber, width: 18 },
+      { header: 'Status', value: r => TICKET_STATUS[r.status].label, width: 12 },
+      { header: 'Zahlung', value: r => paymentBadge(r)?.label, width: 16 },
+      { header: 'Angefragt von', value: r => r.requesterName, width: 20 }
+    ]
+  }
+}
+
+// Export und seltene Werkzeuge gesammelt im Menü „Aktionen“
+const toolItems = computed<DropdownMenuItem[][]>(() => [
+  exportMenuItems(ticketExportList, error => showError(error, 'Der Export hat nicht geklappt.')),
+  [
+    { label: 'Zugeteilte als Text kopieren', icon: 'i-lucide-clipboard-list', onSelect: copyAllocatedList },
+    ...(allocatedRequests.value.length
+      ? [{ label: 'PDFs hochladen', icon: 'i-lucide-file-up', onSelect: () => openUpload(null) }]
+      : [])
+  ]
+])
 </script>
 
 <template>
@@ -429,14 +428,6 @@ const toolItems = computed<DropdownMenuItem[][]>(() => [[
     <TicketHolderModal
       v-model:open="editOpen"
       :request="editRequest"
-      :membership-number-required="round.membershipNumberRequired"
-      @saved="emit('changed')"
-    />
-
-    <TicketDeliveryModal
-      v-model:open="deliveryOpen"
-      :club-id="round.clubId"
-      :requests="deliveryTargets"
       @saved="emit('changed')"
     />
 

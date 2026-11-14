@@ -39,7 +39,6 @@ const emit = defineEmits<{ changed: [] }>()
     <MyTicketRequests
       :requests="group.requests"
       :categories="group.round.categories"
-      :membership-number-required="group.round.membershipNumberRequired"
       :download-requires-payment="group.round.downloadRequiresPayment"
       :purged="group.round.personalDataPurged"
       @changed="emit('changed')"

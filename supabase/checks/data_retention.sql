@@ -33,11 +33,11 @@ begin
   insert into public.ticket_rounds (id, club_id, away_game_id) values (old_round, club, old_game), (new_round, club, new_game);
   insert into public.ticket_categories (id, round_id, club_id, name, price_cents) values
     (old_cat, old_round, club, 'Stehplatz', 1800), (new_cat, new_round, club, 'Stehplatz', 1800);
-  insert into public.ticket_requests (club_id, round_id, category_id, requested_by, holder_name, holder_membership_number, status, delivery_method, ticket_file_path) values
-    (club, old_round, old_cat, u1, 'Alt Eins', 'M-1', 'allocated', 'digital', club || '/x1.pdf'),
-    (club, old_round, old_cat, u1, 'Alt Zwei', 'M-2', 'cancelled', null, null),
-    (club, old_round, old_cat, u1, 'Alt Drei', null, 'requested', null, null),
-    (club, new_round, new_cat, u1, 'Neu', 'M-3', 'allocated', 'digital', club || '/x2.pdf');
+  insert into public.ticket_requests (club_id, round_id, category_id, requested_by, holder_name, holder_membership_number, status, ticket_file_path) values
+    (club, old_round, old_cat, u1, 'Alt Eins', 'M-1', 'allocated', club || '/x1.pdf'),
+    (club, old_round, old_cat, u1, 'Alt Zwei', 'M-2', 'cancelled', null),
+    (club, old_round, old_cat, u1, 'Alt Drei', null, 'requested', null),
+    (club, new_round, new_cat, u1, 'Neu', 'M-3', 'allocated', club || '/x2.pdf');
 
   -- 1) Organisatoren und Mitglieder dürfen die Funktion nicht aufrufen
   set local role authenticated;

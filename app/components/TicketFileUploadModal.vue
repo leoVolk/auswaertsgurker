@@ -13,7 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{ uploaded: [] }>()
 const open = defineModel<boolean>('open', { required: true })
 
-const { uploadTicketFile } = useTicketDeliveryActions(() => props.clubId)
+const { uploadTicketFile } = useTicketFileActions(() => props.clubId)
 const toast = useToast()
 const showError = useErrorToast()
 

@@ -2,20 +2,21 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { PaymentStatus } from '~/composables/usePayments'
 import type { RegistrationStatus, TripParticipant } from '~/composables/useTripRegistrations'
+import type { TripDetail } from '~/composables/useTrips'
+import type { ExportList } from '~/utils/exportList'
 
 const props = defineProps<{
-  tripId: string
-  capacity: number | null
-  priceCents: number | null
+  trip: TripDetail
+  clubName: string
 }>()
 
 const emit = defineEmits<{ changed: [] }>()
 
-const { participants, refresh } = await useTripParticipants(() => props.tripId)
+const { participants, refresh } = await useTripParticipants(() => props.trip.id)
 const { cancel, confirm, confirmAll } = useTripRegistrationActions()
 const { setPaymentStatus } = usePaymentActions()
 
-const hasPrice = computed(() => (props.priceCents ?? 0) > 0)
+const hasPrice = computed(() => (props.trip.priceCents ?? 0) > 0)
 const isSeated = (p: TripParticipant) => p.status === 'requested' || p.status === 'confirmed'
 
 // Zahlungsstand der Personen mit Platz
@@ -87,7 +88,7 @@ const requestedCount = computed(() => participants.value.filter(p => p.status ==
 const takenCount = computed(() =>
   participants.value.filter(p => p.status === 'requested' || p.status === 'confirmed').length
 )
-const isOverbooked = computed(() => props.capacity !== null && takenCount.value > props.capacity)
+const isOverbooked = computed(() => props.trip.capacity !== null && takenCount.value > props.trip.capacity)
 
 async function afterChange() {
   await refresh()
@@ -106,7 +107,7 @@ async function onConfirm(participant: TripParticipant) {
 
 async function onConfirmAll() {
   try {
-    const count = await confirmAll(props.tripId)
+    const count = await confirmAll(props.trip.id)
     await afterChange()
     toast.add({
       title: count === 1 ? '1 Platz bestätigt' : `${count} Plätze bestätigt`,
@@ -139,6 +140,31 @@ async function onCancelConfirmed() {
   }
 }
 
+// Export der Anmeldeliste (ohne Abgesagte), Reihenfolge wie in den Gruppen
+function participantExportList(): ExportList<TripParticipant & { position: number | null }> {
+  const rows = groups.value
+    .filter(group => group.status !== 'cancelled')
+    .flatMap(group => group.items.map((participant, index) => ({
+      ...participant,
+      position: group.status === 'waitlist' ? index + 1 : null
+    })))
+  const label = tripLabel(props.trip)
+  const game = `${props.trip.awayGame.matchday}. Spieltag bei ${props.trip.awayGame.opponentName}`
+
+  return {
+    title: `${label}: Anmeldungen`,
+    subtitle: `${props.clubName} · ${game}`,
+    fileName: exportFileName('anmeldungen', label, props.trip.awayGame.matchday, 'spieltag', props.trip.awayGame.opponentName),
+    rows,
+    columns: [
+      { header: 'Name', value: p => p.displayName, width: 24 },
+      { header: 'Status', value: p => (p.position ? `${REGISTRATION_STATUS[p.status].label} (${p.position}.)` : REGISTRATION_STATUS[p.status].label), width: 16 },
+      ...(hasPrice.value ? [{ header: 'Zahlung', value: (p: TripParticipant) => paymentBadge(p)?.label, width: 16 }] : [])
+    ]
+  }
+}
+const exportItems = computed(() => exportMenuItems(participantExportList, error => showError(error, 'Der Export hat nicht geklappt.')))
+
 function actions(participant: TripParticipant): DropdownMenuItem[][] {
   const cancelAction: DropdownMenuItem = {
     label: participant.status === 'waitlist' ? 'Von der Warteliste nehmen' : 'Platz freigeben',
@@ -166,12 +192,28 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
 <template>
   <section class="space-y-6">
     <div class="space-y-3">
-      <p
-        v-if="hasPrice && (payment.confirmed || payment.reported || payment.open)"
-        class="text-sm text-muted"
-      >
-        Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
-      </p>
+      <div class="flex items-center gap-3">
+        <p
+          v-if="hasPrice && (payment.confirmed || payment.reported || payment.open)"
+          class="text-sm text-muted"
+        >
+          Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
+        </p>
+        <UDropdownMenu
+          v-if="participants.length"
+          :items="exportItems"
+          :content="{ align: 'end' }"
+        >
+          <UButton
+            label="Liste"
+            icon="i-lucide-download"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            class="ms-auto shrink-0"
+          />
+        </UDropdownMenu>
+      </div>
       <UButton
         v-if="requestedCount > 0"
         :label="`Alle Plätze bestätigen (${requestedCount})`"

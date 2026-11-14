@@ -73,8 +73,8 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', orga, 'role', 'authenticated')::text, true);
   result := public.attach_ticket_file(r1);
   if result <> path1 then raise exception '4a: falscher Pfad %', result; end if;
-  select delivery_method, ticket_file_path into rec from public.ticket_requests where id = r1;
-  if rec.delivery_method <> 'digital' or rec.ticket_file_path <> path1 then raise exception '4b: %', rec; end if;
+  select ticket_file_path into rec from public.ticket_requests where id = r1;
+  if rec.ticket_file_path <> path1 then raise exception '4b: %', rec; end if;
 
   -- 5) Anfragende Person sieht die Datei, andere Mitglieder nicht
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
@@ -84,38 +84,34 @@ begin
   select count(*) into n from storage.objects where name = path1;
   if n <> 0 then raise exception '5b: Fremdes Mitglied sieht die Datei'; end if;
 
-  -- 6) Mitglied darf keine Hinterlegung festlegen
+  -- 6) Mitglied darf keine Datei anhängen oder lösen
   failed := false;
   begin
-    perform public.set_ticket_delivery(array[r1], 'box_office', null, null);
+    perform public.attach_ticket_file(r1);
   exception when others then failed := true;
   end;
-  if not failed then raise exception '6: Mitglied konnte Hinterlegung festlegen'; end if;
+  if not failed then raise exception '6a: Mitglied konnte Datei anhängen'; end if;
+  failed := false;
+  begin
+    perform public.detach_ticket_file(r1);
+  exception when others then failed := true;
+  end;
+  if not failed then raise exception '6b: Mitglied konnte Datei lösen'; end if;
 
-  -- 7) Abholung ohne Ort und Hinterlegung für nicht zugeteilte Tickets werden abgewiesen
+  -- 7) PDFs nur für zugeteilte Tickets
   perform set_config('request.jwt.claims', json_build_object('sub', orga, 'role', 'authenticated')::text, true);
   failed := false;
   begin
-    perform public.set_ticket_delivery(array[r1], 'pickup', '  ', null);
+    perform public.attach_ticket_file(r2);
   exception when others then failed := true;
   end;
-  if not failed then raise exception '7a: Abholung ohne Ort möglich'; end if;
-  failed := false;
-  begin
-    perform public.set_ticket_delivery(array[r2], 'box_office', null, null);
-  exception when others then failed := true;
-  end;
-  if not failed then raise exception '7b: Hinterlegung für nicht zugeteiltes Ticket möglich'; end if;
+  if not failed then raise exception '7: Datei an nicht zugeteiltes Ticket angehängt'; end if;
 
-  -- 8) Wechsel auf Abholung löst die Datei und liefert den Pfad zum Löschen
-  select count(*) into n from public.set_ticket_delivery(array[r1], 'pickup', 'Am Bus', now()) as p where p = path1;
-  if n <> 1 then raise exception '8: Pfad der gelösten Datei nicht zurückgegeben'; end if;
-  select count(*) into n from public.set_ticket_delivery(array[r1], 'pickup', 'Am Bus', now());
-  if n <> 0 then raise exception '8a: Zweiter Aufruf liefert noch Pfade'; end if;
-  select delivery_method, pickup_location, ticket_file_path into rec from public.ticket_requests where id = r1;
-  if rec.delivery_method <> 'pickup' or rec.pickup_location <> 'Am Bus' or rec.ticket_file_path is not null then
-    raise exception '8b: %', rec;
-  end if;
+  -- 8) Lösen liefert den Pfad zum Löschen
+  result := public.detach_ticket_file(r1);
+  if result <> path1 then raise exception '8: Pfad der gelösten Datei nicht zurückgegeben'; end if;
+  select ticket_file_path into rec from public.ticket_requests where id = r1;
+  if rec.ticket_file_path is not null then raise exception '8b: %', rec; end if;
 
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
   select count(*) into n from storage.objects where name = path1;

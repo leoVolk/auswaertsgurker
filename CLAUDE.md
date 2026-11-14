@@ -81,8 +81,8 @@ Schema auf Sicherheitsprobleme.
   eigene Anmeldung; Belegungszahlen kommen aus `get_trip_stats`, weil in diesen Zeilen künftig
   auch der Zahlungsstatus steht.
 - **Tickets:** `ticket_rounds` (eine pro `away_game`) → `ticket_categories` (Preis, Kontingent,
-  `null` = noch offen) → `ticket_requests` (ein Ticket pro Zeile, Inhaber + optionale
-  Mitgliedsnummer). Zuteilung durch Organisatoren per `set_ticket_request_status` (prüft das
+  `null` = noch offen) → `ticket_requests` (ein Ticket pro Zeile, Inhaber + Mitgliedsnummer;
+  die Nummer ist Pflicht, `request_ticket`/`update_ticket_request_holder` prüfen das). Zuteilung durch Organisatoren per `set_ticket_request_status` (prüft das
   Kontingent unter Sperre) bzw. `auto_allocate_tickets` (nach Anfragezeitpunkt, Rest →
   Warteliste); kein automatisches Nachrücken. Mitglieder schreiben nur über `request_ticket`,
   `update_ticket_request_holder` und `cancel_ticket_request` (nur solange nicht zugeteilt).
@@ -94,13 +94,21 @@ Schema auf Sicherheitsprobleme.
   `MyTicketPayment`. Stornierte Anfragen, die durch eine neue Anfrage derselben Person für denselben
   Inhaber überholt sind, blendet `withoutSupersededCancellations` in beiden Ansichten aus (nur
   Anzeige, die Zeilen bleiben in der DB; offene Zahlung oder hinterlegtes PDF bleiben sichtbar).
-- **Ticket-Hinterlegung:** `ticket_requests.delivery_method` (`pickup` mit Ort/Zeit, `box_office`,
-  `digital`). PDFs liegen im privaten Bucket `ticket-files` unter `<club_id>/<request_id>.pdf`;
-  Storage-Policies über `can_read_ticket_file` (anfragende Person nur bei zugeteiltem und
-  angehängtem Ticket, Organisatoren immer), `can_upload_ticket_file`, `can_delete_ticket_file`.
-  Ablauf: Upload per Storage-API → `attach_ticket_file`; Lösen per `detach_ticket_file` bzw.
-  `set_ticket_delivery`, die zurückgegebenen Pfade löscht der Client aus dem Storage.
-  Downloads nur über kurzlebige signierte URLs. Storage-Dateien nie per SQL löschen.
+- **Ticket-PDFs:** Tickets kommen immer als PDF (Abholung/Gästekasse gibt es nicht mehr). PDFs
+  liegen im privaten Bucket `ticket-files` unter `<club_id>/<request_id>.pdf`; Storage-Policies über
+  `can_read_ticket_file` (anfragende Person nur bei zugeteiltem und angehängtem Ticket,
+  Organisatoren immer), `can_upload_ticket_file`, `can_delete_ticket_file`. Ablauf: Upload per
+  Storage-API → `attach_ticket_file`; Lösen per `detach_ticket_file`, den zurückgegebenen Pfad
+  löscht der Client aus dem Storage (`useTicketFileActions`). Downloads nur über kurzlebige
+  signierte URLs. Storage-Dateien nie per SQL löschen.
+- **Eigene Mitgliedsnummer:** Tabelle `membership_numbers` (eine Nummer pro Person, RLS: nur selbst
+  lesbar, Schreiben nur per RPC `set_my_membership_number`, leer = löschen). Nicht in `profiles`,
+  weil Profile für alle Mitglieder gemeinsamer Fanclubs lesbar sind. `useMembershipNumber()` füllt
+  das Anfrageformular vor, wenn man für sich selbst anfragt, und bietet das Speichern an.
+- **Exporte:** `app/utils/exportList.ts` erzeugt Excel (`write-excel-file`) und PDF (`jspdf` +
+  `jspdf-autotable`) im Browser aus den schon geladenen Daten; die Bibliotheken werden per
+  dynamischem Import erst beim Export geladen. Listen für Organisatoren: Ticketanfragen,
+  Fahrt-Anmeldungen, Mitglieder (`exportMenuItems` liefert die Menüeinträge).
 - **Zahlungen:** `payment_status` an `trip_registrations` und `ticket_requests`, PayPal.Me-Name in
   `clubs.paypal_me`. Mitglieder melden per `report_payment(p_trip_registration_ids,
   p_ticket_request_ids)` (nur eigene, bezahlbare Posten: Fahrt mit Platz, zugeteiltes Ticket);
@@ -226,16 +234,18 @@ Schema auf Sicherheitsprobleme.
 - Anstoßzeiten können fehlen, solange der Spieltag nicht terminiert ist. Dann "Termin offen"
   anzeigen und alle Angemeldeten benachrichtigen, sobald die Zeit feststeht.
 - Tickets: Organisatoren öffnen pro Auswärtsspiel eine Ticketabfrage (Kategorien, Preise, Kontingent,
-  Fristen). Jedes Ticket ist eine eigene Anfrage mit Inhabername; Status requested, allocated,
+  Fristen). Jedes Ticket ist eine eigene Anfrage mit Inhabername und
+  Vereinsmitgliedsnummer (Pflicht); Status requested, allocated,
   waitlist, rejected, cancelled. Weitergabe nur zum Originalpreis, kein öffentlicher Verkauf.
 - Bezahlen nur per PayPal.Me-Link des Fanclubs mit vorausgefülltem Betrag und kopierbarem
   Verwendungszweck; die App wickelt selbst keine Zahlungen ab. payment_status: open, reported,
   confirmed, refunded. Mitglieder setzen nur open -> reported (Funktion report_payment),
   alles andere nur Organisatoren. Gilt für Tickets und Fahrtkosten.
-- Hinterlegung pro Ticket: pickup (Ort/Zeit), box_office (Gästekasse) oder digital (Datei in
-  privatem Storage-Bucket, abrufbar nur für Inhaber und Organisatoren).
+- Tickets gibt es nur als PDF (privater Storage-Bucket, abrufbar nur für die anfragende Person und
+  Organisatoren).
 - Ticketanfragen sehen nur die anfragende Person und Organisatoren. Mitgliedsnummern und
-  Ticketdateien 30 Tage nach dem Spiel löschen.
+  Ticketdateien 30 Tage nach dem Spiel löschen. Exportierte Listen enthalten Mitgliedsnummern; für
+  diese Dateien sind die Organisatoren selbst verantwortlich.
 - Treffpunkte und Abfahrtszeiten sind nur für Mitglieder des Fanclubs sichtbar, nie öffentlich.
 - Daten aus OpenLigaDB mit Quellenangabe anzeigen (Lizenz ODbL).
 

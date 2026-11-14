@@ -1,9 +1,5 @@
 <script setup lang="ts">
-// Eingabefelder für Inhaber und Mitgliedsnummer; wird in UForm eingebettet
-defineProps<{
-  membershipNumberRequired: boolean
-}>()
-
+// Eingabefelder für Inhaber und Mitgliedsnummer (Pflicht); wird in UForm eingebettet
 const holderName = defineModel<string>('holderName', { required: true })
 const membershipNumber = defineModel<string>('membershipNumber', { required: true })
 </script>
@@ -25,8 +21,7 @@ const membershipNumber = defineModel<string>('membershipNumber', { required: tru
   <UFormField
     name="membershipNumber"
     label="Mitgliedsnummer"
-    :hint="membershipNumberRequired ? undefined : 'Optional'"
-    :required="membershipNumberRequired"
+    required
     :help="`Sehen nur die Organisatoren. Wird ${TICKET_DATA_RETENTION_DAYS} Tage nach dem Spiel gelöscht.`"
   >
     <UInput

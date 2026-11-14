@@ -4,6 +4,7 @@ export interface ClubMember {
   userId: string
   displayName: string
   role: ClubRole
+  joinedAt: string
 }
 
 export async function useClubMembers(clubId: MaybeRefOrGetter<string>) {
@@ -18,7 +19,7 @@ export async function useClubMembers(clubId: MaybeRefOrGetter<string>) {
 
       const { data, error } = await supabase
         .from('club_members')
-        .select('user_id, role, profile:profiles!inner(display_name)')
+        .select('user_id, role, joined_at, profile:profiles!inner(display_name)')
         .eq('club_id', id)
       if (error) throw error
 
@@ -26,7 +27,8 @@ export async function useClubMembers(clubId: MaybeRefOrGetter<string>) {
         .map(m => ({
           userId: m.user_id,
           displayName: m.profile.display_name ?? 'Ohne Namen',
-          role: m.role
+          role: m.role,
+          joinedAt: m.joined_at
         }))
         // Organisatoren zuerst, dann alphabetisch
         .sort((a, b) =>

@@ -5,7 +5,6 @@ import type { TicketCategory, TicketRequest } from '~/composables/useTickets'
 const props = defineProps<{
   requests: TicketRequest[]
   categories: TicketCategory[]
-  membershipNumberRequired: boolean
   downloadRequiresPayment: boolean
   /** Ticketdaten nach Ablauf der Löschfrist entfernt */
   purged: boolean
@@ -186,7 +185,6 @@ async function onCancel() {
   <TicketHolderModal
     v-model:open="editOpen"
     :request="editRequest"
-    :membership-number-required="membershipNumberRequired"
     @saved="emit('changed')"
   />
 

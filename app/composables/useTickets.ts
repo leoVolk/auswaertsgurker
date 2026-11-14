@@ -4,7 +4,6 @@ import type { Enums } from '~/types/database.types'
 import type { PaymentStatus } from './usePayments'
 
 export type TicketStatus = Enums<'ticket_status'>
-export type TicketDeliveryMethod = Enums<'ticket_delivery_method'>
 
 export const TICKET_STATUS: Record<TicketStatus, { label: string, color: BadgeProps['color'] }> = {
   requested: { label: 'Angefragt', color: 'warning' },
@@ -29,7 +28,6 @@ export interface TicketRound {
   clubId: string
   requestDeadline: string | null
   maxTicketsPerMember: number | null
-  membershipNumberRequired: boolean
   downloadRequiresPayment: boolean
   notes: string | null
   closedAt: string | null
@@ -52,9 +50,6 @@ export interface TicketRequest {
   holderName: string
   holderMembershipNumber: string | null
   status: TicketStatus
-  deliveryMethod: TicketDeliveryMethod | null
-  pickupLocation: string | null
-  pickupAt: string | null
   ticketFilePath: string | null
   paymentStatus: PaymentStatus
 }
@@ -73,7 +68,6 @@ export interface TicketRoundSummary {
 export interface TicketRoundInput {
   requestDeadline: string | null
   maxTicketsPerMember: number | null
-  membershipNumberRequired: boolean
   downloadRequiresPayment: boolean
   notes: string | null
   categories: { id?: string, name: string, priceCents: number, quota: number | null }[]
@@ -150,7 +144,7 @@ export async function useClubTicketRounds(clubId: MaybeRefOrGetter<string>) {
 
 // Spalten und Umwandlung gemeinsam für die Ticketseite und „Meine Tickets“
 const TICKET_ROUND_COLUMNS = `
-  id, club_id, request_deadline, max_tickets_per_member, membership_number_required,
+  id, club_id, request_deadline, max_tickets_per_member,
   download_requires_payment, notes, closed_at,
   away_game:away_games!inner(openligadb_match_id, matchday, opponent_name, kickoff_at, personal_data_purged_at),
   categories:ticket_categories(id, name, price_cents, quota, sort_order)
@@ -158,7 +152,7 @@ const TICKET_ROUND_COLUMNS = `
 
 const TICKET_REQUEST_COLUMNS = `
   id, category_id, requested_by, holder_name, holder_membership_number, status,
-  delivery_method, pickup_location, pickup_at, ticket_file_path, payment_status,
+  ticket_file_path, payment_status,
   requester:profiles!inner(display_name)
 `
 
@@ -167,7 +161,6 @@ interface TicketRoundRow {
   club_id: string
   request_deadline: string | null
   max_tickets_per_member: number | null
-  membership_number_required: boolean
   download_requires_payment: boolean
   notes: string | null
   closed_at: string | null
@@ -188,9 +181,6 @@ interface TicketRequestRow {
   holder_name: string
   holder_membership_number: string | null
   status: TicketStatus
-  delivery_method: TicketDeliveryMethod | null
-  pickup_location: string | null
-  pickup_at: string | null
   ticket_file_path: string | null
   payment_status: PaymentStatus
   requester: { display_name: string | null }
@@ -202,7 +192,6 @@ function toTicketRound(row: TicketRoundRow): TicketRound {
     clubId: row.club_id,
     requestDeadline: row.request_deadline,
     maxTicketsPerMember: row.max_tickets_per_member,
-    membershipNumberRequired: row.membership_number_required,
     downloadRequiresPayment: row.download_requires_payment,
     notes: row.notes,
     closedAt: row.closed_at,
@@ -228,9 +217,6 @@ function toTicketRequest(row: TicketRequestRow): TicketRequest {
     holderName: row.holder_name,
     holderMembershipNumber: row.holder_membership_number,
     status: row.status,
-    deliveryMethod: row.delivery_method,
-    pickupLocation: row.pickup_location,
-    pickupAt: row.pickup_at,
     ticketFilePath: row.ticket_file_path,
     paymentStatus: row.payment_status
   }
@@ -348,22 +334,21 @@ export function useTicketRequestActions() {
   const supabase = useSupabaseClient()
   const dispatch = useNotificationDispatch()
 
-  // Die generierten Typen kennen kein null für RPC-Parameter; null wird trotzdem korrekt übertragen
-  async function requestTicket(categoryId: string, holderName: string, membershipNumber: string | null) {
+  async function requestTicket(categoryId: string, holderName: string, membershipNumber: string) {
     const { data, error } = await supabase.rpc('request_ticket', {
       p_category_id: categoryId,
       p_holder_name: holderName,
-      p_membership_number: membershipNumber as string
+      p_membership_number: membershipNumber
     })
     if (error) throw error
     return data
   }
 
-  async function updateHolder(requestId: string, holderName: string, membershipNumber: string | null) {
+  async function updateHolder(requestId: string, holderName: string, membershipNumber: string) {
     const { error } = await supabase.rpc('update_ticket_request_holder', {
       p_request_id: requestId,
       p_holder_name: holderName,
-      p_membership_number: membershipNumber as string
+      p_membership_number: membershipNumber
     })
     if (error) throw error
   }
@@ -417,7 +402,6 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
         away_game_id: awayGameId,
         request_deadline: input.requestDeadline,
         max_tickets_per_member: input.maxTicketsPerMember,
-        membership_number_required: input.membershipNumberRequired,
         download_requires_payment: input.downloadRequiresPayment,
         notes: input.notes
       })
@@ -453,7 +437,6 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
       .update({
         request_deadline: input.requestDeadline,
         max_tickets_per_member: input.maxTicketsPerMember,
-        membership_number_required: input.membershipNumberRequired,
         download_requires_payment: input.downloadRequiresPayment,
         notes: input.notes
       })
@@ -508,16 +491,10 @@ export function useTicketRoundActions(clubId: MaybeRefOrGetter<string>) {
 }
 
 // ---------------------------------------------------------------------------
-// Hinterlegung
+// Ticket-PDFs (einzige Hinterlegungsart)
 // ---------------------------------------------------------------------------
 
 export const TICKET_FILE_MAX_BYTES = 5 * 1024 * 1024
-
-export const TICKET_DELIVERY: Record<TicketDeliveryMethod, { label: string, icon: string }> = {
-  digital: { label: 'PDF', icon: 'i-lucide-file-text' },
-  pickup: { label: 'Abholung', icon: 'i-lucide-map-pin' },
-  box_office: { label: 'Gästekasse', icon: 'i-lucide-store' }
-}
 
 /** Prüft eine Ticketdatei vor dem Upload; liefert eine Fehlermeldung oder null. */
 export function ticketFileProblem(file: File) {
@@ -530,7 +507,7 @@ export function ticketFileProblem(file: File) {
   return null
 }
 
-export function useTicketDeliveryActions(clubId: MaybeRefOrGetter<string>) {
+export function useTicketFileActions(clubId: MaybeRefOrGetter<string>) {
   const supabase = useSupabaseClient()
   const dispatch = useNotificationDispatch()
   const bucket = () => supabase.storage.from(TICKET_FILES_BUCKET)
@@ -560,28 +537,7 @@ export function useTicketDeliveryActions(clubId: MaybeRefOrGetter<string>) {
     }
   }
 
-  async function setDelivery(
-    requestIds: string[],
-    method: TicketDeliveryMethod,
-    pickupLocation: string | null,
-    pickupAt: string | null
-  ) {
-    // Die generierten Typen kennen kein null für RPC-Parameter; null wird trotzdem korrekt übertragen
-    const { data: detachedPaths, error } = await supabase.rpc('set_ticket_delivery', {
-      p_request_ids: requestIds,
-      p_method: method,
-      p_pickup_location: pickupLocation as string,
-      p_pickup_at: pickupAt as string
-    })
-    if (error) throw error
-    dispatch()
-    if (detachedPaths.length) {
-      const { error: storageError } = await bucket().remove(detachedPaths)
-      if (storageError) throw storageError
-    }
-  }
-
-  return { uploadTicketFile, removeTicketFile, setDelivery }
+  return { uploadTicketFile, removeTicketFile }
 }
 
 /** Öffnet ein Ticket-PDF über einen kurzlebigen signierten Link (Rechte prüft die Storage-Policy). */
