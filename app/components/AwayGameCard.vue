@@ -155,7 +155,7 @@ const myTicketBadges = computed(() => {
     <div
       v-if="isOrganizer"
       class="grid gap-2"
-      :class="ticketRound ? 'grid-cols-1' : 'grid-cols-2'"
+      :class="{ 'sm:grid-cols-2': !ticketRound }"
     >
       <UButton
         :to="`/clubs/${clubId}/trips/new?match=${match.matchId}`"
