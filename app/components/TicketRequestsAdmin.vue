@@ -286,68 +286,62 @@ async function copyAllocatedList() {
     showError(error, 'Kopieren hat nicht geklappt.')
   }
 }
+
+// Seltene Werkzeuge gesammelt im Menü „Aktionen“
+const toolItems = computed<DropdownMenuItem[][]>(() => [[
+  { label: 'Liste kopieren', icon: 'i-lucide-clipboard-list', onSelect: copyAllocatedList },
+  ...(allocatedRequests.value.length
+    ? [
+        { label: 'PDFs hochladen', icon: 'i-lucide-file-up', onSelect: () => openUpload(null) },
+        { label: 'Hinterlegung für alle', icon: 'i-lucide-package-check', onSelect: () => openDelivery(allocatedRequests.value) }
+      ]
+    : [])
+]])
 </script>
 
 <template>
-  <section class="space-y-3">
-    <h2 class="text-lg font-semibold text-highlighted">
-      Alle Anfragen
-    </h2>
-    <div class="flex flex-wrap gap-2">
-      <UButton
-        label="Liste kopieren"
-        icon="i-lucide-clipboard-list"
-        color="neutral"
-        variant="outline"
-        size="sm"
-        @click="copyAllocatedList"
-      />
-      <template v-if="allocatedRequests.length">
-        <UButton
-          label="PDFs hochladen"
-          icon="i-lucide-file-up"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          @click="openUpload(null)"
-        />
-        <UButton
-          label="Hinterlegung für alle"
-          icon="i-lucide-package-check"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          @click="openDelivery(allocatedRequests)"
-        />
-      </template>
-    </div>
-
-    <div
-      v-if="payableRequests.length"
-      class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-elevated/50 px-3 py-2 text-sm"
-    >
-      <span class="text-muted">
-        Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
-      </span>
+  <section class="space-y-6">
+    <div class="space-y-3">
+      <div class="flex items-center gap-3">
+        <p
+          v-if="payableRequests.length"
+          class="text-sm text-muted"
+        >
+          Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
+        </p>
+        <UDropdownMenu
+          :items="toolItems"
+          :content="{ align: 'end' }"
+        >
+          <UButton
+            label="Aktionen"
+            trailing-icon="i-lucide-chevron-down"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            class="ms-auto shrink-0"
+          />
+        </UDropdownMenu>
+      </div>
       <UButton
         v-if="payment.reported"
-        :label="`Gemeldete bestätigen (${payment.reported})`"
+        :label="`Gemeldete Zahlungen bestätigen (${payment.reported})`"
         icon="i-lucide-badge-check"
-        size="xs"
         variant="soft"
+        block
         loading-auto
         @click="onConfirmReported"
       />
     </div>
 
-    <UCard
-      v-for="category in categories"
-      :key="category.id"
-      :ui="{ body: 'space-y-4' }"
-    >
-      <template #header>
+    <div class="divide-y divide-default">
+      <section
+        v-for="category in categories"
+        :key="category.id"
+        class="space-y-3 py-6 first:pt-0 last:pb-0"
+      >
         <div class="space-y-2">
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex items-baseline justify-between gap-3">
             <h3 class="font-semibold text-highlighted">
               {{ category.name }} · {{ formatPrice(category.priceCents) }}
             </h3>
@@ -368,69 +362,69 @@ async function copyAllocatedList() {
             Kontingent noch offen. Ohne Kontingent kannst du nicht automatisch zuteilen.
           </p>
         </div>
-      </template>
 
-      <UButton
-        v-if="category.quota !== null && category.pending > 0"
-        label="Automatisch zuteilen"
-        icon="i-lucide-wand-sparkles"
-        variant="soft"
-        block
-        loading-auto
-        @click="onAutoAllocate(category)"
-      />
-
-      <p
-        v-if="!category.groups.length"
-        class="text-sm text-muted"
-      >
-        Noch keine Anfragen.
-      </p>
-
-      <UCollapsible
-        v-for="group in category.groups"
-        :key="group.status"
-        :default-open="group.status === 'requested'"
-        class="flex flex-col gap-2"
-      >
         <UButton
-          color="neutral"
-          variant="ghost"
-          trailing-icon="i-lucide-chevron-down"
+          v-if="category.quota !== null && category.pending > 0"
+          label="Automatisch zuteilen"
+          icon="i-lucide-wand-sparkles"
+          variant="soft"
           block
-          class="group justify-between"
-          :ui="{ trailingIcon: 'transition-transform duration-200 group-data-[state=open]:rotate-180' }"
-        >
-          <!-- Farbpunkt statt Badge, damit die Gruppentitel ruhig bleiben -->
-          <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-            <UChip
-              standalone
-              inset
-              :color="TICKET_STATUS[group.status].color"
-            />
-            <span class="font-medium text-highlighted">
-              {{ TICKET_STATUS[group.status].label }} ({{ group.items.length }})
-            </span>
-            <span
-              v-if="group.refundsOpen"
-              class="text-warning"
-            >
-              {{ group.refundsOpen === 1 ? '1 Erstattung offen' : `${group.refundsOpen} Erstattungen offen` }}
-            </span>
-          </span>
-        </UButton>
+          loading-auto
+          @click="onAutoAllocate(category)"
+        />
 
-        <template #content>
-          <TicketRequestRows
-            :requests="group.items"
-            :dimmed="group.status === 'rejected' || group.status === 'cancelled'"
-            :delivery-line="deliveryLine"
-            :payment-badge="paymentBadge"
-            :actions="actions"
-          />
-        </template>
-      </UCollapsible>
-    </UCard>
+        <p
+          v-if="!category.groups.length"
+          class="text-sm text-muted"
+        >
+          Noch keine Anfragen.
+        </p>
+
+        <UCollapsible
+          v-for="group in category.groups"
+          :key="group.status"
+          :default-open="group.status === 'requested'"
+          class="flex flex-col gap-2"
+        >
+          <UButton
+            color="neutral"
+            variant="ghost"
+            trailing-icon="i-lucide-chevron-down"
+            block
+            class="group justify-between px-0 hover:bg-transparent active:bg-transparent"
+            :ui="{ trailingIcon: 'transition-transform duration-200 group-data-[state=open]:rotate-180' }"
+          >
+            <!-- Farbpunkt statt Badge, damit die Gruppentitel ruhig bleiben -->
+            <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+              <UChip
+                standalone
+                inset
+                :color="TICKET_STATUS[group.status].color"
+              />
+              <span class="font-medium text-highlighted">
+                {{ TICKET_STATUS[group.status].label }} ({{ group.items.length }})
+              </span>
+              <span
+                v-if="group.refundsOpen"
+                class="text-warning"
+              >
+                {{ group.refundsOpen === 1 ? '1 Erstattung offen' : `${group.refundsOpen} Erstattungen offen` }}
+              </span>
+            </span>
+          </UButton>
+
+          <template #content>
+            <TicketRequestRows
+              :requests="group.items"
+              :dimmed="group.status === 'rejected' || group.status === 'cancelled'"
+              :delivery-line="deliveryLine"
+              :payment-badge="paymentBadge"
+              :actions="actions"
+            />
+          </template>
+        </UCollapsible>
+      </section>
+    </div>
 
     <TicketHolderModal
       v-model:open="editOpen"

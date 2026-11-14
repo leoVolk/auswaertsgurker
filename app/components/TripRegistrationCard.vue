@@ -80,73 +80,56 @@ async function onCancel() {
 </script>
 
 <template>
-  <UCard
-    title="Deine Anmeldung"
-    :ui="{ body: 'space-y-4' }"
-  >
+  <UCard :ui="{ body: 'space-y-4' }">
+    <h2 class="font-semibold text-highlighted">
+      Deine Anmeldung
+    </h2>
+
     <TripSeats
       :capacity="trip.capacity"
       :stats="stats"
     />
 
-    <UAlert
+    <StatusLine
       v-if="status === 'confirmed'"
       color="success"
-      variant="subtle"
-      icon="i-lucide-circle-check"
       title="Dein Platz ist bestätigt."
     />
-    <UAlert
+    <StatusLine
       v-else-if="status === 'requested'"
       color="warning"
-      variant="subtle"
-      icon="i-lucide-hourglass"
       title="Du bist angemeldet."
       description="Ein Organisator bestätigt deinen Platz noch."
     />
-    <UAlert
+    <StatusLine
       v-else-if="status === 'waitlist'"
       color="info"
-      variant="subtle"
-      icon="i-lucide-list-ordered"
       :title="`Du stehst auf Platz ${stats?.myWaitlistPosition ?? '?'} der Warteliste.`"
       description="Wird ein Platz frei, rückst du automatisch nach."
     />
 
-    <template v-if="showPayment">
-      <USeparator />
-      <PaymentBox
-        label="Fahrtkosten"
-        :amount-cents="trip.priceCents ?? 0"
-        :reference="reference"
-        :paypal-me="paypalMe"
-        :status="stats?.myPaymentStatus ?? 'open'"
-        :report="onReportPayment"
-      />
-      <USeparator />
-    </template>
+    <PaymentBox
+      v-if="showPayment"
+      label="Fahrtkosten"
+      :amount-cents="trip.priceCents ?? 0"
+      :reference="reference"
+      :paypal-me="paypalMe"
+      :status="stats?.myPaymentStatus ?? 'open'"
+      :report="onReportPayment"
+      class="border-t border-default pt-4"
+    />
 
     <template v-if="!isActive">
-      <p
+      <StatusLine
         v-if="status === 'cancelled'"
-        class="text-sm text-muted"
-      >
-        Du hast für diese Fahrt abgesagt.
-      </p>
-      <UAlert
-        v-if="stats?.myPaymentStatus === 'confirmed'"
-        color="info"
-        variant="subtle"
-        icon="i-lucide-undo-2"
-        title="Du hast schon bezahlt."
-        description="Die Organisatoren erstatten dir die Fahrtkosten."
+        color="neutral"
+        title="Du hast für diese Fahrt abgesagt."
+        :description="stats?.myPaymentStatus === 'confirmed' ? 'Du hast schon bezahlt, die Organisatoren erstatten dir die Fahrtkosten.' : undefined"
       />
 
-      <UAlert
+      <StatusLine
         v-if="closedReason"
         color="neutral"
-        variant="subtle"
-        icon="i-lucide-lock"
         :title="closedReason"
       />
       <template v-else>
@@ -181,8 +164,7 @@ async function onCancel() {
         :label="status === 'waitlist' ? 'Von der Warteliste nehmen' : 'Absagen'"
         icon="i-lucide-user-minus"
         color="neutral"
-        variant="outline"
-        size="lg"
+        variant="ghost"
         block
       />
 

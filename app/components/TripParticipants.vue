@@ -74,7 +74,12 @@ const GROUP_ORDER: { status: RegistrationStatus, title: string }[] = [
 
 const groups = computed(() =>
   GROUP_ORDER
-    .map(group => ({ ...group, items: participants.value.filter(p => p.status === group.status) }))
+    .map((group) => {
+      const items = participants.value.filter(p => p.status === group.status)
+      // Bezahlt, aber ohne Platz (Warteliste, abgesagt): Organisatoren müssen erstatten
+      const seated = group.status === 'requested' || group.status === 'confirmed'
+      return { ...group, items, refundsOpen: seated ? 0 : items.filter(p => p.paymentStatus === 'confirmed').length }
+    })
     .filter(group => group.items.length > 0)
 )
 
@@ -159,49 +164,40 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
 </script>
 
 <template>
-  <UCard :ui="{ body: 'space-y-4' }">
-    <template #header>
-      <div class="flex items-center justify-between gap-3">
-        <h2 class="font-semibold text-highlighted">
-          Anmeldungen
-        </h2>
-        <UButton
-          v-if="requestedCount > 0"
-          :label="`Alle bestätigen (${requestedCount})`"
-          icon="i-lucide-check-check"
-          size="sm"
-          loading-auto
-          @click="onConfirmAll"
-        />
-      </div>
-    </template>
-
-    <div
-      v-if="hasPrice && (payment.confirmed || payment.reported || payment.open)"
-      class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-elevated/50 px-3 py-2 text-sm"
-    >
-      <span class="text-muted">
+  <section class="space-y-6">
+    <div class="space-y-3">
+      <p
+        v-if="hasPrice && (payment.confirmed || payment.reported || payment.open)"
+        class="text-sm text-muted"
+      >
         Bezahlt {{ payment.confirmed }} · Gemeldet {{ payment.reported }} · Offen {{ payment.open }}
-      </span>
+      </p>
+      <UButton
+        v-if="requestedCount > 0"
+        :label="`Alle Plätze bestätigen (${requestedCount})`"
+        icon="i-lucide-check-check"
+        block
+        loading-auto
+        @click="onConfirmAll"
+      />
       <UButton
         v-if="payment.reported"
-        :label="`Gemeldete bestätigen (${payment.reported})`"
+        :label="`Gemeldete Zahlungen bestätigen (${payment.reported})`"
         icon="i-lucide-badge-check"
-        size="xs"
         variant="soft"
+        block
         loading-auto
         @click="onConfirmReported"
       />
+      <UAlert
+        v-if="isOverbooked"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        title="Mehr Plätze vergeben als vorhanden"
+        description="Erhöhe die Platzzahl der Fahrt oder gib einzelne Plätze frei."
+      />
     </div>
-
-    <UAlert
-      v-if="isOverbooked"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-triangle-alert"
-      title="Mehr Plätze vergeben als vorhanden"
-      description="Erhöhe die Platzzahl der Fahrt oder gib einzelne Plätze frei."
-    />
 
     <p
       v-if="!groups.length"
@@ -210,59 +206,80 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
       Noch keine Anmeldungen.
     </p>
 
-    <section
-      v-for="group in groups"
-      :key="group.status"
-      class="space-y-2"
+    <div
+      v-else
+      class="space-y-1"
     >
-      <h3 class="flex items-center gap-2 text-sm font-medium text-muted">
-        <UBadge
-          :label="group.title"
-          :color="REGISTRATION_STATUS[group.status].color"
-          variant="subtle"
-          size="sm"
-        />
-        {{ group.items.length }}
-      </h3>
-
-      <ul class="divide-y divide-default rounded-md border border-default">
-        <li
-          v-for="(participant, index) in group.items"
-          :key="participant.id"
-          class="flex items-center justify-between gap-3 px-3 py-2"
-          :class="{ 'opacity-60': group.status === 'cancelled' && participant.paymentStatus !== 'confirmed' }"
+      <UCollapsible
+        v-for="group in groups"
+        :key="group.status"
+        :default-open="group.status === 'requested'"
+        class="flex flex-col gap-2"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          trailing-icon="i-lucide-chevron-down"
+          block
+          class="group justify-between px-0 hover:bg-transparent active:bg-transparent"
+          :ui="{ trailingIcon: 'transition-transform duration-200 group-data-[state=open]:rotate-180' }"
         >
-          <UUser
-            :name="group.status === 'waitlist' ? `${index + 1}. ${participant.displayName}` : participant.displayName"
-            :avatar="{ alt: participant.displayName }"
-            size="sm"
-            class="min-w-0 flex-1"
-          />
-
-          <UBadge
-            v-if="paymentBadge(participant)"
-            :label="paymentBadge(participant)?.label"
-            :color="paymentBadge(participant)?.color"
-            variant="solid"
-            size="sm"
-            class="shrink-0"
-          />
-
-          <UDropdownMenu
-            v-if="actions(participant).length"
-            :items="actions(participant)"
-            :content="{ align: 'end' }"
-          >
-            <UButton
-              icon="i-lucide-ellipsis-vertical"
-              color="neutral"
-              variant="ghost"
-              :aria-label="`Aktionen für ${participant.displayName}`"
+          <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+            <UChip
+              standalone
+              inset
+              :color="REGISTRATION_STATUS[group.status].color"
             />
-          </UDropdownMenu>
-        </li>
-      </ul>
-    </section>
+            <span class="font-medium text-highlighted">
+              {{ group.title }} ({{ group.items.length }})
+            </span>
+            <span
+              v-if="group.refundsOpen"
+              class="text-warning"
+            >
+              {{ group.refundsOpen === 1 ? '1 Erstattung offen' : `${group.refundsOpen} Erstattungen offen` }}
+            </span>
+          </span>
+        </UButton>
+
+        <template #content>
+          <ul class="divide-y divide-default rounded-md border border-default">
+            <li
+              v-for="(participant, index) in group.items"
+              :key="participant.id"
+              class="flex items-center gap-3 px-3 py-2"
+              :class="{ 'opacity-60': group.status === 'cancelled' && participant.paymentStatus !== 'confirmed' }"
+            >
+              <span class="min-w-0 flex-1 truncate font-medium text-highlighted">
+                <template v-if="group.status === 'waitlist'">{{ index + 1 }}. </template>{{ participant.displayName }}
+              </span>
+
+              <UBadge
+                v-if="paymentBadge(participant)"
+                :label="paymentBadge(participant)?.label"
+                :color="paymentBadge(participant)?.color"
+                variant="solid"
+                size="sm"
+                class="shrink-0"
+              />
+
+              <UDropdownMenu
+                v-if="actions(participant).length"
+                :items="actions(participant)"
+                :content="{ align: 'end' }"
+              >
+                <UButton
+                  icon="i-lucide-ellipsis-vertical"
+                  color="neutral"
+                  variant="ghost"
+                  :aria-label="`Aktionen für ${participant.displayName}`"
+                />
+              </UDropdownMenu>
+            </li>
+          </ul>
+        </template>
+      </UCollapsible>
+    </div>
 
     <UModal
       v-model:open="cancelOpen"
@@ -290,5 +307,5 @@ function actions(participant: TripParticipant): DropdownMenuItem[][] {
         </div>
       </template>
     </UModal>
-  </UCard>
+  </section>
 </template>

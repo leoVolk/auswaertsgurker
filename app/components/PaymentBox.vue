@@ -90,36 +90,28 @@ async function onReport() {
         />
       </template>
 
-      <UAlert
+      <StatusLine
         v-else
         color="neutral"
-        variant="subtle"
-        icon="i-lucide-info"
         title="Der Fanclub hat noch keinen PayPal-Link hinterlegt."
         description="Frag die Organisatoren, wie du bezahlen kannst."
       />
     </template>
 
-    <UAlert
+    <StatusLine
       v-else-if="status === 'reported'"
       color="warning"
-      variant="subtle"
-      icon="i-lucide-hourglass"
       title="Zahlung gemeldet"
       description="Die Organisatoren bestätigen sie, wenn das Geld da ist."
     />
-    <UAlert
+    <StatusLine
       v-else-if="status === 'confirmed'"
       color="success"
-      variant="subtle"
-      icon="i-lucide-badge-check"
       title="Bezahlt"
     />
-    <UAlert
+    <StatusLine
       v-else
       color="info"
-      variant="subtle"
-      icon="i-lucide-undo-2"
       title="Erstattet"
     />
   </div>

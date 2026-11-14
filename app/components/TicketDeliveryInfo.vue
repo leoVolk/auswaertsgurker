@@ -26,7 +26,7 @@ async function download() {
 </script>
 
 <template>
-  <div class="rounded-md bg-elevated/50 p-3 text-sm">
+  <div class="text-sm">
     <template v-if="request.deliveryMethod === 'digital'">
       <p
         v-if="request.ticketFilePath && downloadLocked"

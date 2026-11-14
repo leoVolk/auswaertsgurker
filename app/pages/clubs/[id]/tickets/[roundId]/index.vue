@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
+
 const route = useRoute()
 const clubId = computed(() => String(route.params.id))
 const roundId = computed(() => String(route.params.roundId))
@@ -28,6 +30,17 @@ const remaining = computed(() =>
 
 useHead({ title: () => (round.value ? `Tickets bei ${round.value.awayGame.opponentName}` : 'Tickets') })
 
+// Organisatoren: Tabs „Übersicht“/„Verwaltung“, gemerkt in der URL (?tab=admin)
+const tab = computed({
+  get: () => (isOrganizer.value && route.query.tab === 'admin' ? 'admin' : 'overview'),
+  set: value => navigateTo({ query: { ...route.query, tab: value === 'admin' ? 'admin' : undefined } }, { replace: true })
+})
+const openCount = computed(() => requests.value.filter(r => r.status === 'requested').length)
+const tabItems = computed<TabsItem[]>(() => [
+  { label: 'Übersicht', value: 'overview' },
+  { label: 'Verwaltung', value: 'admin', badge: openCount.value || undefined }
+])
+
 async function refreshAll() {
   await Promise.all([refreshRound(), refreshRequests()])
 }
@@ -49,6 +62,19 @@ async function toggleClosed() {
 }
 
 const deleteOpen = ref(false)
+const actions = computed<DropdownMenuItem[][]>(() => isOrganizer.value && round.value
+  ? [
+      [
+        { label: 'Ticketabfrage bearbeiten', icon: 'i-lucide-pencil', to: `/clubs/${clubId.value}/tickets/${round.value.id}/edit` },
+        {
+          label: isOpen.value ? 'Ticketabfrage schließen' : 'Ticketabfrage wieder öffnen',
+          icon: isOpen.value ? 'i-lucide-lock' : 'i-lucide-lock-open',
+          onSelect: toggleClosed
+        }
+      ],
+      [{ label: 'Ticketabfrage löschen', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => { deleteOpen.value = true } }]
+    ]
+  : [])
 
 async function onDelete() {
   if (!round.value) return
@@ -74,221 +100,173 @@ async function onDelete() {
 
   <div
     v-else
-    class="space-y-6"
+    class="space-y-5"
   >
-    <div class="space-y-2">
-      <UButton
-        :to="`/clubs/${club.id}`"
-        :label="`Zurück zu ${club.name}`"
-        icon="i-lucide-arrow-left"
-        color="neutral"
-        variant="link"
-        class="-ms-2.5 max-w-full"
-        :ui="{ label: 'truncate' }"
-      />
-      <div class="flex items-center gap-3">
-        <UIcon
-          name="i-lucide-ticket"
-          class="size-7 shrink-0 text-primary"
-        />
-        <h1 class="text-2xl font-bold text-highlighted">
-          Tickets
-        </h1>
-        <UBadge
-          :label="isOpen ? 'Offen' : 'Geschlossen'"
-          :color="isOpen ? 'success' : 'neutral'"
-          variant="subtle"
-        />
-      </div>
-      <div class="space-y-1 text-sm">
-        <p class="font-medium text-highlighted">
-          {{ round.awayGame.matchday }}. Spieltag bei {{ round.awayGame.opponentName }}
-        </p>
-        <KickoffLabel
-          :kickoff-at="kickoffAt"
-          :provisional-at="liveMatch?.provisionalAt"
-        />
-      </div>
-    </div>
-
-    <UCard :ui="{ body: 'space-y-4' }">
-      <dl class="space-y-2 text-sm">
-        <div class="flex gap-3">
-          <dt class="w-36 shrink-0 text-muted">
-            Anfragen bis
-          </dt>
-          <dd class="font-medium text-highlighted">
-            {{ round.closedAt ? 'Geschlossen' : round.requestDeadline ? formatDateTime(round.requestDeadline) : 'Keine Frist' }}
-          </dd>
-        </div>
-        <div
-          v-if="round.maxTicketsPerMember"
-          class="flex gap-3"
-        >
-          <dt class="w-36 shrink-0 text-muted">
-            Pro Mitglied
-          </dt>
-          <dd class="font-medium text-highlighted">
-            höchstens {{ round.maxTicketsPerMember }} Tickets
-          </dd>
-        </div>
-      </dl>
-
-      <ul class="divide-y divide-default rounded-md border border-default">
-        <li
-          v-for="category in round.categories"
-          :key="category.id"
-          class="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-        >
-          <span class="font-medium text-highlighted">{{ category.name }}</span>
-          <span class="text-muted">
-            {{ formatPrice(category.priceCents) }}<template v-if="category.quota !== null"> · {{ category.quota }} Tickets</template>
-          </span>
-        </li>
-      </ul>
-
-      <p
-        v-if="round.notes"
-        class="whitespace-pre-line text-sm text-highlighted"
-      >
-        {{ round.notes }}
-      </p>
-
-      <UAlert
-        color="neutral"
-        variant="subtle"
-        icon="i-lucide-scale"
-        title="Weitergabe nur zum Originalpreis"
-        description="Tickets aus dem Fanclub-Kontingent dürfen nicht öffentlich weiterverkauft werden."
-      />
-    </UCard>
-
-    <UAlert
-      v-if="round.personalDataPurged"
-      color="neutral"
-      variant="subtle"
-      icon="i-lucide-shield-check"
-      title="Ticketdaten gelöscht"
-      :description="`Mitgliedsnummern und Ticket-PDFs wurden ${TICKET_DATA_RETENTION_DAYS} Tage nach dem Spiel automatisch gelöscht.`"
+    <DetailHeader
+      :back-to="`/clubs/${club.id}`"
+      :back-label="club.name"
+      icon="i-lucide-ticket"
+      title="Tickets"
+      :badge="isOpen ? { label: 'Offen', color: 'success' } : { label: 'Geschlossen', color: 'neutral' }"
+      :matchday="round.awayGame.matchday"
+      :opponent-name="round.awayGame.opponentName"
+      :kickoff-at="kickoffAt"
+      :provisional-at="liveMatch?.provisionalAt"
+      :actions="actions"
     />
 
-    <UCard
-      title="Ticket anfragen"
-      :ui="{ body: 'space-y-4' }"
-    >
-      <UAlert
-        v-if="!isOpen"
-        color="neutral"
-        variant="subtle"
-        icon="i-lucide-lock"
-        title="Die Ticketabfrage ist geschlossen."
-      />
-      <UAlert
-        v-else-if="remaining !== null && remaining <= 0"
-        color="info"
-        variant="subtle"
-        icon="i-lucide-info"
-        :title="`Du hast bereits ${round.maxTicketsPerMember} Tickets angefragt.`"
-        description="Storniere eine Anfrage, wenn du ein Ticket für jemand anderen anfragen möchtest."
-      />
-      <template v-else>
-        <p
-          v-if="remaining !== null"
-          class="text-sm text-muted"
+    <UTabs
+      v-if="isOrganizer"
+      v-model="tab"
+      :items="tabItems"
+      :content="false"
+      variant="link"
+      class="w-full"
+    />
+
+    <template v-if="tab === 'overview'">
+      <!-- Eigene Anfragen zuerst: Status und Bezahlen sind der häufigste Grund für den Besuch -->
+      <UCard
+        v-if="myRequests.length"
+        :ui="{ body: 'space-y-4' }"
+      >
+        <h2 class="font-semibold text-highlighted">
+          Deine Anfragen
+        </h2>
+        <MyTicketRequests
+          :requests="myRequests"
+          :categories="round.categories"
+          :membership-number-required="round.membershipNumberRequired"
+          :download-requires-payment="round.downloadRequiresPayment"
+          :purged="round.personalDataPurged"
+          @changed="refreshRequests"
+        />
+        <MyTicketPayment
+          :requests="myRequests"
+          :categories="round.categories"
+          :away-game="round.awayGame"
+          :paypal-me="club.paypalMe"
+          @changed="refreshRequests"
+        />
+      </UCard>
+
+      <UCard :ui="{ body: 'space-y-4' }">
+        <StatusLine
+          v-if="round.personalDataPurged"
+          color="neutral"
+          title="Ticketdaten gelöscht"
+          :description="`Mitgliedsnummern und Ticket-PDFs wurden ${TICKET_DATA_RETENTION_DAYS} Tage nach dem Spiel automatisch gelöscht.`"
+        />
+
+        <ul class="divide-y divide-default text-sm">
+          <li
+            v-for="category in round.categories"
+            :key="category.id"
+            class="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
+          >
+            <span class="font-medium text-highlighted">{{ category.name }}</span>
+            <span class="text-muted">
+              {{ formatPrice(category.priceCents) }}<template v-if="category.quota !== null"> · {{ category.quota }} Tickets</template>
+            </span>
+          </li>
+        </ul>
+
+        <dl
+          v-if="(isOpen && round.requestDeadline) || round.maxTicketsPerMember"
+          class="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-default pt-4 text-sm"
         >
-          Du kannst noch {{ remaining }} {{ remaining === 1 ? 'Ticket' : 'Tickets' }} anfragen.
+          <div v-if="isOpen && round.requestDeadline">
+            <dt class="text-muted">
+              Anfragen bis
+            </dt>
+            <dd class="font-medium text-highlighted">
+              {{ formatDateTime(round.requestDeadline) }}
+            </dd>
+          </div>
+          <div v-if="round.maxTicketsPerMember">
+            <dt class="text-muted">
+              Pro Mitglied
+            </dt>
+            <dd class="font-medium text-highlighted">
+              max. {{ round.maxTicketsPerMember }} Tickets
+            </dd>
+          </div>
+        </dl>
+
+        <p
+          v-if="round.notes"
+          class="border-t border-default pt-4 text-sm whitespace-pre-line text-default"
+        >
+          {{ round.notes }}
         </p>
+
+        <p class="flex gap-2 text-xs text-muted">
+          <UIcon
+            name="i-lucide-scale"
+            class="size-4 shrink-0"
+          />
+          Weitergabe nur zum Originalpreis, kein öffentlicher Weiterverkauf.
+        </p>
+      </UCard>
+
+      <UCard
+        v-if="isOpen"
+        :ui="{ body: 'space-y-4' }"
+      >
+        <div class="space-y-0.5">
+          <h2 class="font-semibold text-highlighted">
+            Ticket anfragen
+          </h2>
+          <p
+            v-if="remaining !== null && remaining > 0"
+            class="text-sm text-muted"
+          >
+            Du kannst noch {{ remaining }} {{ remaining === 1 ? 'Ticket' : 'Tickets' }} anfragen.
+          </p>
+        </div>
+        <StatusLine
+          v-if="remaining !== null && remaining <= 0"
+          color="info"
+          :title="`Du hast bereits ${round.maxTicketsPerMember} Tickets angefragt.`"
+          description="Storniere eine Anfrage, wenn du ein Ticket für jemand anderen anfragen möchtest."
+        />
         <TicketRequestForm
+          v-else
           :round="round"
           :default-holder-name="myRequests.length ? '' : profile?.display_name ?? ''"
           @requested="refreshRequests"
         />
-      </template>
-    </UCard>
-
-    <UCard
-      v-if="myRequests.length"
-      title="Deine Anfragen"
-      :ui="{ body: 'space-y-4' }"
-    >
-      <MyTicketRequests
-        :requests="myRequests"
-        :categories="round.categories"
-        :membership-number-required="round.membershipNumberRequired"
-        :download-requires-payment="round.downloadRequiresPayment"
-        :purged="round.personalDataPurged"
-        @changed="refreshRequests"
-      />
-
-      <MyTicketPayment
-        :requests="myRequests"
-        :categories="round.categories"
-        :away-game="round.awayGame"
-        :paypal-me="club.paypalMe"
-        @changed="refreshRequests"
-      />
-    </UCard>
-
-    <template v-if="isOrganizer">
-      <TicketRequestsAdmin
-        :round="round"
-        :requests="requests"
-        @changed="refreshAll"
-      />
-
-      <div class="grid gap-2">
-        <UButton
-          :to="`/clubs/${club.id}/tickets/${round.id}/edit`"
-          label="Ticketabfrage bearbeiten"
-          icon="i-lucide-pencil"
-          color="neutral"
-          variant="outline"
-          size="lg"
-          block
-        />
-        <UButton
-          :label="isOpen ? 'Ticketabfrage schließen' : 'Ticketabfrage wieder öffnen'"
-          :icon="isOpen ? 'i-lucide-lock' : 'i-lucide-lock-open'"
-          color="neutral"
-          variant="outline"
-          size="lg"
-          block
-          loading-auto
-          @click="toggleClosed"
-        />
-
-        <UModal
-          v-model:open="deleteOpen"
-          title="Ticketabfrage löschen?"
-          description="Alle Kategorien und Anfragen werden mit gelöscht. Das lässt sich nicht rückgängig machen."
-        >
-          <UButton
-            label="Ticketabfrage löschen"
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="ghost"
-            size="lg"
-            block
-          />
-
-          <template #footer>
-            <div class="flex w-full justify-end gap-2">
-              <UButton
-                label="Abbrechen"
-                color="neutral"
-                variant="ghost"
-                @click="deleteOpen = false"
-              />
-              <UButton
-                label="Löschen"
-                color="error"
-                loading-auto
-                @click="onDelete"
-              />
-            </div>
-          </template>
-        </UModal>
-      </div>
+      </UCard>
     </template>
+
+    <TicketRequestsAdmin
+      v-else
+      :round="round"
+      :requests="requests"
+      @changed="refreshAll"
+    />
+
+    <UModal
+      v-model:open="deleteOpen"
+      title="Ticketabfrage löschen?"
+      description="Alle Kategorien und Anfragen werden mit gelöscht. Das lässt sich nicht rückgängig machen."
+    >
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            label="Abbrechen"
+            color="neutral"
+            variant="ghost"
+            @click="deleteOpen = false"
+          />
+          <UButton
+            label="Löschen"
+            color="error"
+            loading-auto
+            @click="onDelete"
+          />
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
+
 const route = useRoute()
 const clubId = computed(() => String(route.params.id))
 const tripId = computed(() => String(route.params.tripId))
@@ -29,37 +31,35 @@ const kickoffAt = computed(() => (liveMatch.value ? liveMatch.value.kickoffAt : 
 
 useHead({ title: () => (trip.value ? tripLabel(trip.value) : 'Fahrt') })
 
+// Eckdaten kompakt; Plätze zeigt die Anmeldekarte mit Belegung
 const details = computed(() => {
   const t = trip.value
   if (!t) return []
   return [
-    {
-      icon: 'i-lucide-clock',
-      label: 'Abfahrt',
-      value: t.departureAt ? formatDateTime(t.departureAt) : 'Noch offen'
-    },
-    {
-      icon: 'i-lucide-map-pin',
-      label: 'Treffpunkt',
-      value: t.meetingPoint ?? 'Noch offen'
-    },
-    {
-      icon: 'i-lucide-users',
-      label: 'Plätze',
-      value: t.capacity ? `${t.capacity} Plätze` : 'Unbegrenzt'
-    },
-    {
-      icon: 'i-lucide-euro',
-      label: 'Kosten',
-      value: t.priceCents != null ? `${formatPrice(t.priceCents)} pro Person` : 'Noch offen'
-    },
-    ...(t.registrationDeadline
-      ? [{ icon: 'i-lucide-calendar-clock', label: 'Anmeldeschluss', value: formatDateTime(t.registrationDeadline) }]
-      : [])
+    { label: 'Abfahrt', value: t.departureAt ? formatDateTime(t.departureAt) : 'Noch offen' },
+    { label: 'Treffpunkt', value: t.meetingPoint ?? 'Noch offen' },
+    { label: 'Kosten', value: t.priceCents != null ? `${formatPrice(t.priceCents)} p. P.` : 'Noch offen' },
+    ...(t.registrationDeadline ? [{ label: 'Anmeldeschluss', value: formatDateTime(t.registrationDeadline) }] : [])
   ]
 })
 
+// Organisatoren: Tabs „Übersicht“/„Verwaltung“, gemerkt in der URL (?tab=admin)
+const tab = computed({
+  get: () => (isOrganizer.value && route.query.tab === 'admin' ? 'admin' : 'overview'),
+  set: value => navigateTo({ query: { ...route.query, tab: value === 'admin' ? 'admin' : undefined } }, { replace: true })
+})
+const tabItems: TabsItem[] = [
+  { label: 'Übersicht', value: 'overview' },
+  { label: 'Verwaltung', value: 'admin' }
+]
+
 const deleteOpen = ref(false)
+const actions = computed<DropdownMenuItem[][]>(() => isOrganizer.value && trip.value
+  ? [
+      [{ label: 'Fahrt bearbeiten', icon: 'i-lucide-pencil', to: `/clubs/${clubId.value}/trips/${trip.value.id}/edit` }],
+      [{ label: 'Fahrt löschen', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => { deleteOpen.value = true } }]
+    ]
+  : [])
 
 async function onDelete() {
   if (!trip.value) return
@@ -85,134 +85,90 @@ async function onDelete() {
 
   <div
     v-else
-    class="space-y-6"
+    class="space-y-5"
   >
-    <div class="space-y-2">
-      <UButton
-        :to="`/clubs/${club.id}`"
-        :label="`Zurück zu ${club.name}`"
-        icon="i-lucide-arrow-left"
-        color="neutral"
-        variant="link"
-        class="-ms-2.5 max-w-full"
-        :ui="{ label: 'truncate' }"
-      />
-      <div class="flex items-center gap-3">
-        <UIcon
-          :name="TRANSPORT_MODES[trip.transport].icon"
-          class="size-7 shrink-0 text-primary"
-        />
-        <h1 class="text-2xl font-bold text-highlighted">
-          {{ tripLabel(trip) }}
-        </h1>
-      </div>
-      <div class="space-y-1 text-sm">
-        <p class="font-medium text-highlighted">
-          {{ trip.awayGame.matchday }}. Spieltag bei {{ trip.awayGame.opponentName }}
-        </p>
-        <KickoffLabel
-          :kickoff-at="kickoffAt"
-          :provisional-at="liveMatch?.provisionalAt"
-        />
-      </div>
-    </div>
-
-    <UCard :ui="{ body: 'p-0 sm:p-0' }">
-      <dl class="divide-y divide-default">
-        <div
-          v-for="item in details"
-          :key="item.label"
-          class="flex items-start gap-3 px-4 py-3 sm:px-6"
-        >
-          <UIcon
-            :name="item.icon"
-            class="mt-0.5 size-5 shrink-0 text-dimmed"
-          />
-          <dt class="w-32 shrink-0 text-muted">
-            {{ item.label }}
-          </dt>
-          <dd class="min-w-0 font-medium text-highlighted">
-            {{ item.value }}
-          </dd>
-        </div>
-        <div
-          v-if="trip.notes"
-          class="space-y-1 px-4 py-3 sm:px-6"
-        >
-          <dt class="flex items-center gap-3 text-muted">
-            <UIcon
-              name="i-lucide-info"
-              class="size-5 shrink-0 text-dimmed"
-            />
-            Hinweise
-          </dt>
-          <dd class="whitespace-pre-line text-highlighted">
-            {{ trip.notes }}
-          </dd>
-        </div>
-      </dl>
-    </UCard>
-
-    <TripRegistrationCard
-      :trip="trip"
-      :stats="tripStats"
-      :paypal-me="club.paypalMe"
-      @changed="onRegistrationChanged"
+    <DetailHeader
+      :back-to="`/clubs/${club.id}`"
+      :back-label="club.name"
+      :icon="TRANSPORT_MODES[trip.transport].icon"
+      :title="tripLabel(trip)"
+      :matchday="trip.awayGame.matchday"
+      :opponent-name="trip.awayGame.opponentName"
+      :kickoff-at="kickoffAt"
+      :provisional-at="liveMatch?.provisionalAt"
+      :actions="actions"
     />
 
-    <TripParticipants
+    <UTabs
       v-if="isOrganizer"
+      v-model="tab"
+      :items="tabItems"
+      :content="false"
+      variant="link"
+      class="w-full"
+    />
+
+    <template v-if="tab === 'overview'">
+      <UCard>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div
+            v-for="item in details"
+            :key="item.label"
+            class="min-w-0"
+          >
+            <dt class="text-muted">
+              {{ item.label }}
+            </dt>
+            <dd class="font-medium text-highlighted">
+              {{ item.value }}
+            </dd>
+          </div>
+        </dl>
+        <p
+          v-if="trip.notes"
+          class="mt-4 border-t border-default pt-4 text-sm whitespace-pre-line text-default"
+        >
+          {{ trip.notes }}
+        </p>
+      </UCard>
+
+      <TripRegistrationCard
+        :trip="trip"
+        :stats="tripStats"
+        :paypal-me="club.paypalMe"
+        @changed="onRegistrationChanged"
+      />
+    </template>
+
+    <TripParticipants
+      v-else
       :trip-id="trip.id"
       :capacity="trip.capacity"
       :price-cents="trip.priceCents"
       @changed="refreshStats"
     />
 
-    <div
-      v-if="isOrganizer"
-      class="grid gap-2"
+    <UModal
+      v-model:open="deleteOpen"
+      title="Fahrt löschen?"
+      description="Alle Anmeldungen werden mit gelöscht. Das lässt sich nicht rückgängig machen."
     >
-      <UButton
-        :to="`/clubs/${club.id}/trips/${trip.id}/edit`"
-        label="Fahrt bearbeiten"
-        icon="i-lucide-pencil"
-        color="neutral"
-        variant="outline"
-        size="lg"
-        block
-      />
-
-      <UModal
-        v-model:open="deleteOpen"
-        title="Fahrt löschen?"
-        description="Alle Anmeldungen werden mit gelöscht. Das lässt sich nicht rückgängig machen."
-      >
-        <UButton
-          label="Fahrt löschen"
-          icon="i-lucide-trash-2"
-          color="error"
-          variant="ghost"
-          size="lg"
-          block
-        />
-
-        <template #footer>
-          <div class="flex w-full justify-end gap-2">
-            <UButton
-              label="Abbrechen"
-              color="neutral"
-              variant="ghost"
-              @click="deleteOpen = false"
-            />
-            <UButton
-              label="Löschen"
-              color="error"
-              loading-auto
-              @click="onDelete"
-            />
-          </div>
-        </template>
-      </UModal>
-    </div>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            label="Abbrechen"
+            color="neutral"
+            variant="ghost"
+            @click="deleteOpen = false"
+          />
+          <UButton
+            label="Löschen"
+            color="error"
+            loading-auto
+            @click="onDelete"
+          />
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

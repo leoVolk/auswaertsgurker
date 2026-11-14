@@ -125,6 +125,11 @@ Schema auf Sicherheitsprobleme.
   über die klebende, aufklappbare Menüzeile in `ClubHeader.vue` (zwei Root-Knoten, damit `sticky`
   im Seiten-Container wirkt). Ihre negativen Ränder spiegeln den Innenabstand des Containers in
   `layouts/default.vue` (`px-4 lg:px-12 py-6 sm:py-10`): Ändert sich der, muss `ClubHeader` mit.
+- **Detailseiten** (Fahrt, Ticketabfrage): Kopf über `DetailHeader` (Spiel + Anstoß in einer Zeile,
+  Organisator-Aktionen im „⋯“-Menü statt Buttons am Seitenende). Organisatoren bekommen Tabs
+  „Übersicht“/„Verwaltung“ (`UTabs` mit `:content="false"`, Inhalt per `v-if`, Zustand in `?tab=admin`).
+  Zustände als `StatusLine` (Farbpunkt + Text) statt `UAlert`; keine umrandeten Listen oder grauen
+  Boxen innerhalb von Karten.
 - **PWA:** `public/manifest.webmanifest`, `public/sw.js` (nur Push und Klick, kein Offline-Cache),
   Icons in `public/icons/` (Platzhalter aus `icon.svg`), Registrierung in `app/plugins/pwa.client.ts`.
   Profil mit E-Mail-Schalter, Push-Opt-in und Installationshinweis unter `/profile`.
