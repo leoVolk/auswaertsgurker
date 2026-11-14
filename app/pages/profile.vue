@@ -35,7 +35,7 @@ async function savePassword(event: FormSubmitEvent<NewPasswordForm>) {
     changingPassword.value = false
     toast.add({
       title: hadPassword ? 'Passwort geändert' : 'Passwort festgelegt',
-      description: 'Beim nächsten Anmelden kannst du den Tab „Passwort“ nutzen.',
+      description: hadPassword ? undefined : 'Ab jetzt kannst du dich auch mit Passwort anmelden.',
       color: 'success',
       icon: 'i-lucide-check'
     })
@@ -179,7 +179,7 @@ async function install() {
 
     <UCard
       title="Benachrichtigungen"
-      description="Zum Beispiel wenn eine Anstoßzeit feststeht, du nachrückst oder dein Ticket da ist."
+      description="Wenn sich bei Fahrten, Tickets oder Anstoßzeiten etwas tut."
       :ui="{ body: 'space-y-5' }"
     >
       <USwitch
@@ -254,7 +254,7 @@ async function install() {
     <UCard
       v-if="!push.isStandalone.value"
       title="App installieren"
-      description="Mit der App auf dem Home-Bildschirm bist du schneller bei deinen Fahrten und Tickets."
+      description="Dann musst du nicht jedes Mal den Link in WhatsApp suchen."
       :ui="{ body: 'space-y-3' }"
     >
       <UButton

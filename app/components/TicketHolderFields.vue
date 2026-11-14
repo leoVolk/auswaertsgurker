@@ -27,7 +27,7 @@ const membershipNumber = defineModel<string>('membershipNumber', { required: tru
     label="Mitgliedsnummer"
     :hint="membershipNumberRequired ? undefined : 'Optional'"
     :required="membershipNumberRequired"
-    :help="`Vereinsmitgliedsnummer des Inhabers. Nur für Organisatoren sichtbar, wird ${TICKET_DATA_RETENTION_DAYS} Tage nach dem Spiel gelöscht.`"
+    :help="`Sehen nur die Organisatoren. Wird ${TICKET_DATA_RETENTION_DAYS} Tage nach dem Spiel gelöscht.`"
   >
     <UInput
       v-model="membershipNumber"

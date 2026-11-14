@@ -21,7 +21,7 @@ const pastItems = computed<AccordionItem[]>(() => [{
         Meine Tickets
       </h1>
       <p class="text-muted">
-        Alle Tickets, die du in deinen Fanclubs angefragt hast, nach Spiel sortiert.
+        Deine Ticketanfragen aus allen Fanclubs.
       </p>
     </div>
 
@@ -38,7 +38,7 @@ const pastItems = computed<AccordionItem[]>(() => [{
       v-else-if="!groups.length"
       icon="i-lucide-ticket"
       title="Noch keine Tickets"
-      description="Sobald du in einem Fanclub ein Ticket anfragst, findest du es hier."
+      description="Tickets fragst du in deinem Fanclub beim jeweiligen Spiel an."
       :actions="[{ label: 'Zu meinen Fanclubs', to: '/' }]"
     />
 

@@ -32,7 +32,7 @@ async function onSubmit(event: FormSubmitEvent<TicketHolderForm>) {
     await requestTicket(state.categoryId, event.data.holderName, event.data.membershipNumber || null)
     toast.add({
       title: 'Ticket angefragt',
-      description: 'Die Organisatoren teilen die Tickets zu, sobald das Kontingent feststeht.',
+      description: 'Du bekommst Bescheid, wenn die Organisatoren zugeteilt haben.',
       color: 'success',
       icon: 'i-lucide-check'
     })

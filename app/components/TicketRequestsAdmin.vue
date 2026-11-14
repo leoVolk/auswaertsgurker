@@ -365,7 +365,7 @@ async function copyAllocatedList() {
             v-if="category.quota === null"
             class="text-sm text-muted"
           >
-            Kontingent noch offen. Trag es beim Bearbeiten ein, um automatisch zuteilen zu können.
+            Kontingent noch offen. Ohne Kontingent kannst du nicht automatisch zuteilen.
           </p>
         </div>
       </template>

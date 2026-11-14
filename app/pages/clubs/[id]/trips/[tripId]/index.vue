@@ -185,7 +185,7 @@ async function onDelete() {
       <UModal
         v-model:open="deleteOpen"
         title="Fahrt löschen?"
-        description="Die Fahrt wird samt aller Anmeldungen für alle Mitglieder entfernt. Das lässt sich nicht rückgängig machen."
+        description="Alle Anmeldungen werden mit gelöscht. Das lässt sich nicht rückgängig machen."
       >
         <UButton
           label="Fahrt löschen"

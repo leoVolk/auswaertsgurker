@@ -63,7 +63,7 @@ async function onSubmit(event: FormSubmitEvent<TripForm>) {
       name="title"
       label="Bezeichnung"
       hint="Optional"
-      help="Hilfreich bei mehreren Fahrten zum selben Spiel."
+      help="Nur nötig bei mehreren Fahrten zum selben Spiel."
     >
       <UInput
         v-model="state.title"
@@ -77,7 +77,7 @@ async function onSubmit(event: FormSubmitEvent<TripForm>) {
       name="departureAt"
       label="Abfahrt"
       hint="Optional"
-      help="Leer lassen, solange die Abfahrt noch nicht feststeht."
+      help="Kannst du später nachtragen."
     >
       <UInput
         v-model="state.departureAt"
@@ -155,7 +155,7 @@ async function onSubmit(event: FormSubmitEvent<TripForm>) {
     >
       <UTextarea
         v-model="state.notes"
-        placeholder="z. B. Verpflegung, Rückfahrt, was mitzubringen ist"
+        placeholder="z. B. Rückfahrt direkt nach Abpfiff"
         autoresize
         size="lg"
         class="w-full"

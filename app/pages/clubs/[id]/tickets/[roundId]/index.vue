@@ -260,7 +260,7 @@ async function onDelete() {
         <UModal
           v-model:open="deleteOpen"
           title="Ticketabfrage löschen?"
-          description="Die Abfrage wird samt aller Kategorien und Anfragen entfernt. Das lässt sich nicht rückgängig machen."
+          description="Alle Kategorien und Anfragen werden mit gelöscht. Das lässt sich nicht rückgängig machen."
         >
           <UButton
             label="Ticketabfrage löschen"

@@ -110,7 +110,7 @@ const unscheduledItems = computed<AccordionItem[]>(() => [{
     <UEmpty
       v-else-if="isOrganizer"
       icon="i-lucide-shield"
-      title="Welchen Verein begleitet ihr?"
+      title="Noch kein Verein ausgewählt"
       description="Wähle euren Verein aus, dann erscheinen hier die Auswärtsspiele."
       :actions="[{ label: 'Verein auswählen', to: `/clubs/${club.id}/settings` }]"
     />
@@ -118,8 +118,8 @@ const unscheduledItems = computed<AccordionItem[]>(() => [{
     <UEmpty
       v-else
       icon="i-lucide-shield"
-      title="Noch kein Verein hinterlegt"
-      description="Sobald die Organisatoren euren Verein ausgewählt haben, erscheinen hier die Auswärtsspiele."
+      title="Noch kein Verein ausgewählt"
+      description="Die Auswärtsspiele erscheinen hier, wenn ein Organisator den Verein ausgewählt hat."
     />
   </div>
 </template>

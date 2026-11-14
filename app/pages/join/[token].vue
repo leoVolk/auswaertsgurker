@@ -58,7 +58,7 @@ async function onJoin() {
 
       <div class="space-y-1">
         <p class="text-muted">
-          Du bist eingeladen zum Fanclub
+          Einladung zum Fanclub
         </p>
         <h1 class="text-2xl font-bold text-highlighted">
           {{ invitation.clubName }}
@@ -76,14 +76,14 @@ async function onJoin() {
           @click="goToLogin"
         />
         <p class="text-sm text-muted">
-          Du bekommst einen Code per E-Mail. Ein Passwort brauchst du nicht.
+          Zum Anmelden schicken wir dir einen Code per E-Mail.
         </p>
       </div>
 
       <UButton
         v-else-if="invitation.isMember"
         :to="`/clubs/${invitation.clubId}`"
-        label="Du bist schon dabei – zum Fanclub"
+        label="Zum Fanclub"
         size="lg"
         block
       />

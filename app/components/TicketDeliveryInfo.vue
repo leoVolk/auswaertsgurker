@@ -36,7 +36,7 @@ async function download() {
           name="i-lucide-lock"
           class="mt-0.5 size-4 shrink-0"
         />
-        Dein Ticket liegt bereit. Du kannst es herunterladen, sobald deine Zahlung bestätigt ist.
+        Dein Ticket ist da. Herunterladen kannst du es, wenn deine Zahlung bestätigt ist.
       </p>
       <UButton
         v-else-if="request.ticketFilePath"
@@ -54,7 +54,7 @@ async function download() {
           name="i-lucide-file-text"
           class="mt-0.5 size-4 shrink-0"
         />
-        Dein Ticket kommt als PDF. Sobald es da ist, kannst du es hier herunterladen.
+        Dein Ticket kommt als PDF. Du bekommst Bescheid, wenn es da ist.
       </p>
     </template>
 
@@ -90,7 +90,7 @@ async function download() {
         name="i-lucide-info"
         class="mt-0.5 size-4 shrink-0"
       />
-      Wie du an dein Ticket kommst, steht hier, sobald die Organisatoren es festgelegt haben.
+      Wie du an dein Ticket kommst, steht noch nicht fest.
     </p>
   </div>
 </template>

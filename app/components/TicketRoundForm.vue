@@ -66,7 +66,6 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
       name="requestDeadline"
       label="Anfragen möglich bis"
       hint="Optional"
-      help="Danach nimmt die Abfrage keine Anfragen mehr an."
     >
       <UInput
         v-model="state.requestDeadline"
@@ -80,7 +79,6 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
       name="maxTicketsPerMember"
       label="Tickets pro Mitglied"
       hint="Optional"
-      help="Leer lassen, wenn es keine Begrenzung gibt."
     >
       <UInputNumber
         v-model="state.maxTicketsPerMember"
@@ -111,7 +109,7 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
     <UFormField
       name="categories"
       label="Kategorien"
-      help="Das Kontingent kannst du auch später eintragen, sobald es feststeht."
+      help="Das Kontingent kannst du später nachtragen."
     >
       <div class="space-y-3">
         <div
@@ -191,7 +189,7 @@ async function onSubmit(event: FormSubmitEvent<TicketRoundForm>) {
     >
       <UTextarea
         v-model="state.notes"
-        placeholder="z. B. Abholung, Ermäßigungsnachweis, Ansprechpartner"
+        placeholder="z. B. Ermäßigung nur mit Nachweis"
         autoresize
         size="lg"
         class="w-full"

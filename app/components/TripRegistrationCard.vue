@@ -154,7 +154,7 @@ async function onCancel() {
           v-if="isFull"
           class="text-sm text-muted"
         >
-          Die Fahrt ist voll. Auf der Warteliste rückst du automatisch nach, sobald jemand absagt.
+          Die Fahrt ist voll. Sagt jemand ab, rückst du von der Warteliste nach.
         </p>
         <UButton
           :label="isFull ? 'Auf die Warteliste' : 'Mitfahren'"

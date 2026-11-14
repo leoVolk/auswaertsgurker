@@ -28,7 +28,7 @@ async function onReport() {
     await props.report()
     toast.add({
       title: 'Zahlung gemeldet',
-      description: 'Die Organisatoren bestätigen sie, sobald das Geld angekommen ist.',
+      description: 'Die Organisatoren bestätigen sie, wenn das Geld da ist.',
       color: 'success',
       icon: 'i-lucide-check'
     })
@@ -106,7 +106,7 @@ async function onReport() {
       variant="subtle"
       icon="i-lucide-hourglass"
       title="Zahlung gemeldet"
-      description="Die Organisatoren prüfen den Eingang und bestätigen deine Zahlung."
+      description="Die Organisatoren bestätigen sie, wenn das Geld da ist."
     />
     <UAlert
       v-else-if="status === 'confirmed'"

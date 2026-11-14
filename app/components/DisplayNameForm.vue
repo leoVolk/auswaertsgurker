@@ -24,7 +24,6 @@ async function onSubmit(event: FormSubmitEvent<DisplayNameForm>) {
     <UFormField
       name="displayName"
       label="Name"
-      help="Am besten so, wie man dich in der Kurve kennt."
     >
       <UInput
         v-model="state.displayName"

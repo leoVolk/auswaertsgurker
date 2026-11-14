@@ -162,12 +162,12 @@ function memberActions(member: ClubMember): DropdownMenuItem[][] {
       title="Fanclub verlassen"
       :description="isLastOrganizer
         ? 'Als einziger Organisator kannst du nicht austreten. Ernenne vorher jemand anderen zum Organisator oder lösche den Fanclub in den Einstellungen.'
-        : 'Deine Anmeldungen für Fahrten und offene Ticketanfragen werden storniert.'"
+        : 'Du wirst von allen Fahrten abgemeldet und deine offenen Ticketanfragen werden storniert.'"
     >
       <UModal
         v-model:open="leaveOpen"
         :title="`${club.name} verlassen?`"
-        description="Deine Anmeldungen für Fahrten und offene Ticketanfragen werden storniert. Bereits zugeteilte Tickets bleiben bestehen. Zurück kommst du nur über einen Einladungslink."
+        description="Du wirst von allen Fahrten abgemeldet und deine offenen Ticketanfragen werden storniert. Zugeteilte Tickets behältst du. Zurück kommst du nur über einen Einladungslink."
       >
         <UButton
           label="Fanclub verlassen"
@@ -202,7 +202,7 @@ function memberActions(member: ClubMember): DropdownMenuItem[][] {
       v-model:open="removeOpen"
       title="Mitglied entfernen?"
       :description="memberToRemove
-        ? `${memberToRemove.displayName} verliert den Zugriff auf den Fanclub, Anmeldungen für Fahrten werden storniert. Solange der Einladungslink gültig ist, ist ein erneuter Beitritt möglich – erstelle bei Bedarf einen neuen Link.`
+        ? `${memberToRemove.displayName} wird von allen Fahrten abgemeldet, offene Ticketanfragen werden storniert. Über den aktuellen Einladungslink kommt ${memberToRemove.displayName} aber wieder rein. Willst du das verhindern, erstell danach einen neuen Link.`
         : undefined"
     >
       <template #footer>
