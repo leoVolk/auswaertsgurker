@@ -44,16 +44,16 @@ begin
   -- 1) Neue Fahrt -> alle Mitglieder außer Organisator
   insert into public.trips (club_id, away_game_id, transport, capacity) values (club, game, 'bus', 1) returning id into trip;
   reset role;
-  select count(*) into n from public.notifications where kind = 'trip_created';
+  select count(*) into n from public.notifications where club_id = club and kind = 'trip_created';
   if n <> 3 then raise exception '1a: % statt 3', n; end if;
-  if exists (select 1 from public.notifications where user_id = orga) then raise exception '1b: Organisator benachrichtigt'; end if;
+  if exists (select 1 from public.notifications where club_id = club and user_id = orga) then raise exception '1b: Organisator benachrichtigt'; end if;
 
   -- 2) Neue Ticketabfrage -> alle Mitglieder außer Organisator
   set local role authenticated;
   insert into public.ticket_rounds (club_id, away_game_id, request_deadline) values (club, game, now() + interval '3 days') returning id into round;
   insert into public.ticket_categories (round_id, club_id, name, price_cents, quota) values (round, club, 'Stehplatz', 1800, 5) returning id into cat;
   reset role;
-  select count(*) into n from public.notifications where kind = 'ticket_round_opened' and body like '%bis %Uhr%';
+  select count(*) into n from public.notifications where club_id = club and kind = 'ticket_round_opened' and body like '%bis %Uhr%';
   if n <> 3 then raise exception '2: % statt 3', n; end if;
 
   -- 3) Nachrücken
@@ -66,7 +66,7 @@ begin
   select id into reg_u1 from public.trip_registrations where trip_id = trip and user_id = u1;
   perform public.cancel_trip_registration(reg_u1);
   reset role;
-  select count(*) into n from public.notifications where kind = 'waitlist_promoted' and user_id = u2 and title = 'Du bist nachgerückt';
+  select count(*) into n from public.notifications where club_id = club and kind = 'waitlist_promoted' and user_id = u2 and title = 'Du bist nachgerückt';
   if n <> 1 then raise exception '3: % statt 1', n; end if;
 
   -- 4) Ticket zugeteilt, PDF da
@@ -78,9 +78,9 @@ begin
   insert into storage.objects (bucket_id, name, owner_id) values ('ticket-files', club || '/' || req_u3 || '.pdf', orga);
   perform public.attach_ticket_file(req_u3);
   reset role;
-  select count(*) into n from public.notifications where user_id = u3 and kind = 'ticket_allocated';
+  select count(*) into n from public.notifications where club_id = club and user_id = u3 and kind = 'ticket_allocated';
   if n <> 1 then raise exception '4a: zugeteilt %', n; end if;
-  select count(*) into n from public.notifications where user_id = u3 and kind = 'ticket_delivery' and title = 'Dein Ticket ist da';
+  select count(*) into n from public.notifications where club_id = club and user_id = u3 and kind = 'ticket_delivery' and title = 'Dein Ticket ist da';
   if n <> 1 then raise exception '4b: PDF %', n; end if;
 
   -- 5) Abgelehnt
@@ -90,27 +90,27 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', orga, 'role', 'authenticated')::text, true);
   perform public.set_ticket_request_status(req_u1, 'rejected');
   reset role;
-  select count(*) into n from public.notifications where user_id = u1 and kind = 'ticket_rejected';
+  select count(*) into n from public.notifications where club_id = club and user_id = u1 and kind = 'ticket_rejected';
   if n <> 1 then raise exception '5: abgelehnt %', n; end if;
 
   -- 6) Anstoßzeit: fest, geändert, Vergangenheit; nur aktive Anmeldungen/Anfragen (u2 Fahrt, u3 Ticket)
   update public.away_games set kickoff_at = now() + interval '7 days' where id = game;
-  select count(*) into n from public.notifications where kind = 'kickoff_scheduled';
+  select count(*) into n from public.notifications where club_id = club and kind = 'kickoff_scheduled';
   if n <> 2 then raise exception '6a: fest % statt 2', n; end if;
-  if exists (select 1 from public.notifications where kind = 'kickoff_scheduled' and user_id = u1) then
+  if exists (select 1 from public.notifications where club_id = club and kind = 'kickoff_scheduled' and user_id = u1) then
     raise exception '6b: Abgesagtes Mitglied benachrichtigt';
   end if;
   update public.away_games set kickoff_at = now() + interval '8 days' where id = game;
-  select count(*) into n from public.notifications where kind = 'kickoff_changed';
+  select count(*) into n from public.notifications where club_id = club and kind = 'kickoff_changed';
   if n <> 2 then raise exception '6c: geändert % statt 2', n; end if;
   update public.away_games set kickoff_at = now() - interval '40 days' where id = game;
-  select count(*) into n from public.notifications where kind in ('kickoff_scheduled', 'kickoff_changed');
+  select count(*) into n from public.notifications where club_id = club and kind in ('kickoff_scheduled', 'kickoff_changed');
   if n <> 4 then raise exception '6d: Vergangene Anstoßzeit gemeldet'; end if;
 
   -- 7) RLS: Mitglieder sehen nur eigene Benachrichtigungen und können keine anlegen
   set local role authenticated;
   perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
-  select count(*) into n from public.notifications where user_id <> u1;
+  select count(*) into n from public.notifications where club_id = club and user_id <> u1;
   if n <> 0 then raise exception '7a: Fremde Benachrichtigungen sichtbar'; end if;
   failed := false;
   begin
@@ -144,8 +144,8 @@ begin
   if n < 10 then raise exception '10a: nur % abgeholt', n; end if;
   select count(*) into n from public.claim_notifications(100);
   if n <> 0 then raise exception '10b: doppelt abgeholt (%)', n; end if;
-  perform public.complete_notifications(array(select id from public.notifications where status = 'sending'), true, null);
-  select count(*) into n from public.notifications where status <> 'sent';
+  perform public.complete_notifications(array(select id from public.notifications where club_id = club and status = 'sending'), true, null);
+  select count(*) into n from public.notifications where club_id = club and status <> 'sent';
   if n <> 0 then raise exception '10c: % nicht als gesendet markiert', n; end if;
 
   select * into rec from public.notification_recipients(array[u1]);
